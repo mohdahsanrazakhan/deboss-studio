@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
 import type { AspectId, FontFamily, TextAlign } from "@/types/deboss";
 import {
   ASPECT_OPTIONS,
   FONT_OPTIONS,
+  MAX_SET_NAME_LENGTH,
   MAX_TEXT_LENGTH,
   PAPER_TONES,
   PRESETS,
@@ -12,6 +14,7 @@ import {
   rgbToHex,
 } from "@/lib/deboss/constants";
 import { detectTextDirection } from "@/lib/deboss/direction";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 const ALIGNMENTS: { value: TextAlign; label: string }[] = [
   { value: "right", label: "Right" },
@@ -29,6 +32,8 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
   const {
     state,
     activePreset,
+    customSets,
+    activeCustomSet,
     paperKey,
     setText,
     setSlider,
@@ -39,7 +44,17 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     setShadowColor,
     setAspect,
     applyPreset,
+    saveCurrentAsSet,
+    applyCustomSet,
+    deleteCustomSet,
   } = studio;
+
+  // UI-only: whether the "name + save" form is expanded, and which set
+  // (if any) is awaiting delete confirmation. Neither belongs in DebossState.
+  const [isAddingSet, setIsAddingSet] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const pendingDeleteSet =
+    customSets.find((s) => s.id === pendingDeleteId) ?? null;
 
   return (
     <aside className="panel" aria-label="Controls">
@@ -78,6 +93,102 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
           ))}
         </div>
       </section>
+
+      {/* Custom sets — user-saved full configurations, kept separate from Presets */}
+      <section className="group">
+        <span className="group-label" id="sets-label">
+          My sets
+        </span>
+
+        {customSets.length > 0 ? (
+          <div className="set-row" role="group" aria-labelledby="sets-label">
+            {customSets.map((set) => (
+              <div
+                key={set.id}
+                className={`set-chip${activeCustomSet === set.id ? " is-active" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="set-chip-name"
+                  aria-pressed={activeCustomSet === set.id}
+                  onClick={() => void applyCustomSet(set.id)}
+                >
+                  {set.name}
+                </button>
+                <button
+                  type="button"
+                  className="set-chip-delete"
+                  aria-label={`Delete set: ${set.name}`}
+                  onClick={() => setPendingDeleteId(set.id)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="set-empty">
+            Tune the controls to your taste, then save the look below.
+          </p>
+        )}
+
+        {isAddingSet ? (
+          <form
+            className="set-save-row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const input = e.currentTarget.elements.namedItem(
+                "setName",
+              ) as HTMLInputElement;
+              if (saveCurrentAsSet(input.value)) setIsAddingSet(false);
+            }}
+          >
+            <input
+              type="text"
+              name="setName"
+              placeholder="Name this set…"
+              maxLength={MAX_SET_NAME_LENGTH}
+              aria-label="New set name"
+              autoFocus
+            />
+            <button type="submit" className="btn ghost small">
+              Save set
+            </button>
+            <button
+              type="button"
+              className="set-add-cancel"
+              aria-label="Cancel adding a set"
+              onClick={() => setIsAddingSet(false)}
+            >
+              ×
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            className="set-add-toggle"
+            onClick={() => setIsAddingSet(true)}
+          >
+            <span aria-hidden="true">+</span> Add set
+          </button>
+        )}
+      </section>
+
+      <ConfirmDialog
+        open={pendingDeleteSet !== null}
+        title="Delete this set?"
+        message={
+          pendingDeleteSet
+            ? `"${pendingDeleteSet.name}" will be removed. This can't be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (pendingDeleteId) deleteCustomSet(pendingDeleteId);
+          setPendingDeleteId(null);
+        }}
+        onCancel={() => setPendingDeleteId(null)}
+      />
 
       {/* Sliders */}
       <section className="group">

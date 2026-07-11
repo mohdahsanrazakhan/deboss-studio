@@ -7,7 +7,7 @@ export function Header() {
       <div className="brand">
         <span className="brand-mark" aria-hidden="true" />
         <div className="brand-text">
-          <h1>Text Deboss Studio</h1>
+          <h1>Deboss Studio</h1>
           <p>Press any text into premium textured paper.</p>
         </div>
       </div>

@@ -1,6 +1,6 @@
 ---
-name: urdu-deboss-engine
-description: Use this skill when modifying, debugging, or extending the canvas deboss rendering engine in src/lib/deboss/ — including the inner-shadow compositing trick, multi-script RTL/LTR text layout and wrapping (auto-detected via direction.ts), glyph masks, paper texture, font loading for canvas, preview/export parity, or performance of the render loop. Also use when adding presets, sliders, paper tones, or fonts, since those flow through the engine's constants and types.
+name: text-deboss-engine
+description: Use this skill when modifying, debugging, or extending the canvas deboss rendering engine in src/lib/deboss/ — including the inner-shadow compositing trick, multi-script RTL/LTR text layout and wrapping (auto-detected via direction.ts), glyph masks, paper texture, font loading for canvas, preview/export parity, or performance of the render loop. Also use when adding presets, sliders, paper tones, fonts, or user-saved custom sets, since those flow through the engine's constants and types.
 ---
 
 # Text Deboss Engine
@@ -70,6 +70,7 @@ Any visual change made in only one path is a bug. Everything scale-dependent (of
 - **New slider**: add to `SliderId` + `DebossState` (`types/deboss.ts`), `DEFAULT_STATE` + `SLIDER_DEFS` (`constants.ts`), consume in `engine.ts`. The panel renders from `SLIDER_DEFS` automatically. Manual slider changes must keep calling `setActivePreset(null)`.
 - **New preset**: append to `PRESETS`. Presets set all five engraving params + paper; the `paper` string must match a `PAPER_TONES.key` for swatch sync.
 - **New font**: `FontFamily` union → `FONT_OPTIONS` → add to the Google Fonts URL in `app/layout.tsx` → add to the preload `Promise.all` in `useDebossStudio.ts` → add to the `#text-input` font stack in `globals.css`. Confirm the face actually supports the target script's glyph coverage.
+- **Custom sets** (`CustomSet` in `types/deboss.ts`) are user-saved, not built-in — don't add to `PRESETS` for these. A set is a full `DebossState` snapshot minus `text`, built by `toSetSnapshot()` (`constants.ts`) and persisted to `localStorage`. If you add a field to `DebossState`, add it to `toSetSnapshot()` too or it silently won't be captured by sets.
 
 ## Debug checklist
 

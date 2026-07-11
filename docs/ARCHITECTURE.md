@@ -6,6 +6,8 @@ Text Deboss Studio is a fully client-rendered canvas application wrapped in a se
 
 ```
 ┌──────────────────────────────────────────────────────────┐
+│ middleware.ts — per-request CSP nonce         [edge]      │
+├──────────────────────────────────────────────────────────┤
 │ app/ (App Router)                                        │
 │   layout.tsx  — metadata, fonts, JSON-LD   [server]      │
 │   page.tsx    — shell: Header + Studio     [server]      │
@@ -50,14 +52,24 @@ Dependency direction is strictly downward. The engine never imports React; compo
 
 ## State model
 
-`DebossState` (in `types/deboss.ts`) is the single source of truth for a render. It is mirrored into `stateRef` so the rAF callback and export handlers always see current values without re-subscribing. UI-only state (`activePreset`, `hint`, `hintFlash`, `isCopying`) lives beside it in the hook but never enters the engine.
+`DebossState` (in `types/deboss.ts`) is the single source of truth for a render. It is mirrored into `stateRef` so the rAF callback and export handlers always see current values without re-subscribing. UI-only state (`activePreset`, `activeCustomSet`, `hint`, `hintFlash`, `isCopying`) lives beside it in the hook but never enters the engine.
 
 Preset semantics: applying a preset overwrites the five engraving parameters + paper tone and marks the preset chip active; any manual slider/swatch change clears the active chip (the values remain).
+
+## Custom sets (client-side persistence)
+
+`CustomSet` (`types/deboss.ts`) is a user-named snapshot of `DebossState` minus `text` — font, alignment, aspect, engraving, paper, tint, shadow colour. Unlike `Preset`s (built-in, four fixed configurations, engraving+paper only), sets are created by the user and cover the *entire* look.
+
+They're the app's only persisted data, stored as JSON in `localStorage` under `CUSTOM_SETS_STORAGE_KEY` — still no server, no cookies, no network write. `useDebossStudio.ts` loads them once on mount and re-persists on every change, guarded by a `customSetsLoadedRef` so the pre-load empty array can't clobber storage before the initial read resolves. Every `localStorage` call is wrapped in `try/catch` since it can throw (private browsing, quota, disabled storage) — a set then just lives for the current session instead of failing the app.
 
 ## Server vs client boundary
 
 `page.tsx` and `Header` are server components — the header, landmarks, and metadata are in the HTML for crawlers. `Studio` is the single `"use client"` island; hydration cost is limited to it (First Load JS ≈ 107 kB total).
 
+## CSP nonce
+
+`middleware.ts` runs on every request, generates a random nonce, and sets it on the *request's* `Content-Security-Policy` header (see `docs/SECURITY.md` for the full rationale — Next's App Router needs a nonced/trusted `script-src` for its own inline hydration scripts, and a static `script-src 'self'` blocks them entirely in production). Next.js's renderer reads that header and automatically applies the nonce to the scripts it manages — nothing in `app/` has to touch it. The one inline script the app authors itself (the JSON-LD block in `layout.tsx`) does **not** get a nonce: it's `type="application/ld+json"`, which browsers never enforce `script-src` against (inert data, not executed), and nonce'ing it anyway previously caused a hydration mismatch (browsers strip a script's `nonce` attribute from the DOM right after insertion). Because nothing reads a per-request header, `layout.tsx` stays a plain sync Server Component and the root route stays statically prerendered.
+
 ## Build & quality gates
 
-`npm run build` runs ESLint (`next/core-web-vitals` + TS rules) and strict type-checking (`strict`, `noUncheckedIndexedAccess`). All routes are statically prerendered.
+`npm run build` runs ESLint (`next/core-web-vitals` + TS rules) and strict type-checking (`strict`, `noUncheckedIndexedAccess`). All routes are statically prerendered — the middleware's CSP nonce is applied per-request at the edge without forcing any route to render dynamically.

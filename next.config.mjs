@@ -2,37 +2,20 @@
  * Next.js configuration — Text Deboss Studio
  *
  * Security posture (see docs/SECURITY.md):
- *  - Strict Content-Security-Policy. The app is 100% client-rendered canvas
- *    work with NO user-generated markup, no third-party scripts, and no
- *    analytics. The only external origins are Google Fonts (stylesheet +
- *    font binaries), required for correct multi-script (Nastaliq, Naskh,
- *    Devanagari, Latin) shaping.
- *  - `script-src 'self'` in production. Dev mode needs 'unsafe-eval' for
- *    React Fast Refresh, so it is added ONLY when NODE_ENV !== 'production'.
- *  - `style-src` requires 'unsafe-inline' because Next.js injects inline
- *    <style> tags for critical CSS; this is standard for Next apps.
- *  - blob: in img-src is required for the PNG download flow
+ *  - Content-Security-Policy is NOT set here — it lives in `src/middleware.ts`
+ *    because it needs a fresh nonce per request (Next.js App Router requires
+ *    inline <script> tags for RSC streaming/hydration; a static
+ *    `script-src 'self'` blocks them all in production and renders a blank
+ *    page). Do not add a Content-Security-Policy header to this file — a
+ *    second CSP header would combine with middleware's via intersection and
+ *    reintroduce that bug.
+ *  - The other headers below don't need per-request values, so they stay
+ *    static here.
+ *  - blob: in the middleware's img-src is required for the PNG download flow
  *    (canvas.toBlob -> URL.createObjectURL).
  */
 
-const isDev = process.env.NODE_ENV !== "production";
-
-const csp = [
-  "default-src 'self'",
-  `script-src 'self'${isDev ? " 'unsafe-eval' 'unsafe-inline'" : ""}`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' blob: data:",
-  "connect-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "upgrade-insecure-requests",
-].join("; ");
-
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

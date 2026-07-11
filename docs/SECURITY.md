@@ -12,13 +12,13 @@ This is a static, client-only tool: no authentication, no server-side state, no 
 
 ## Controls in place
 
-### Content-Security-Policy (next.config.mjs)
+### Content-Security-Policy (src/middleware.ts)
 
-Production policy:
+The CSP is generated **per-request in middleware**, not as a static header in `next.config.mjs`. Reason: Next.js App Router injects several inline `<script>` tags into every page (RSC flight-data pushes + the hydration bootstrap) — a static `script-src 'self'` with no `'unsafe-inline'`/nonce/hash blocks every one of them in production, and the page renders blank (dev mode masked this because dev CSP added `'unsafe-inline'`; this shipped broken to the first production deploy until caught). The fix is Next's documented nonce pattern:
 
 ```
 default-src 'self';
-script-src 'self';
+script-src 'self' 'nonce-<random-per-request>' 'strict-dynamic';
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 font-src 'self' https://fonts.gstatic.com;
 img-src 'self' blob: data:;
@@ -32,11 +32,15 @@ upgrade-insecure-requests
 
 Rationale:
 
-- `script-src 'self'` — no inline scripts, no third-party JS, no analytics. The only inline `<script>` is the JSON-LD block, which is `type="application/ld+json"` (data, not executable) and built from developer-controlled constants only — no user input ever flows into it.
-- Google Fonts is the **only** external origin (styles + font binaries), required for Nastaliq shaping. Nothing else may be added without updating this document.
+- `middleware.ts` generates a fresh random nonce every request and sets it on the *request's* `Content-Security-Policy` header. Next.js's renderer reads the nonce from that header and automatically applies it to the inline scripts it manages (RSC flight-data pushes, hydration bootstrap) — no code in `app/` has to touch the nonce.
+- `'strict-dynamic'` lets scripts trusted via the nonce load their own child chunks (webpack/RSC chunk loading) — required for the app to run at all with a nonce-based policy.
+- **Do not** add a `Content-Security-Policy` header back into `next.config.mjs`. Two CSP headers on one response are enforced as an intersection (most restrictive per directive wins), so a static `script-src 'self'` there would silently defeat the nonce and reintroduce the blank-page bug.
+- **Don't nonce the JSON-LD script.** The one inline `<script>` we author ourselves (`app/layout.tsx`, `type="application/ld+json"`, built from developer-controlled constants — no user input ever flows into it) does **not** need a nonce: browsers only enforce `script-src` against executable script MIME types, and `application/ld+json` is inert data that's never executed, so it was never blocked in the first place. An earlier version of this fix added a nonce to it anyway, which caused a hydration mismatch — browsers hide a script's `nonce` attribute from the DOM right after insertion (so React's SSR-rendered value can never match what it reads back from the live DOM). Keep this script nonce-free.
+- Google Fonts is the **only** external origin (styles + font binaries), required for multi-script shaping. Nothing else may be added without updating this document.
 - `blob:` in `img-src` supports the PNG download flow (`URL.createObjectURL`).
-- `'unsafe-inline'` in `style-src` is required by Next.js critical-CSS injection; scripts remain locked down, which is what matters for XSS.
-- Dev builds add `'unsafe-eval'`/`'unsafe-inline'` to `script-src` for Fast Refresh only — gated on `NODE_ENV !== 'production'`.
+- `'unsafe-inline'` in `style-src` is required by Next.js critical-CSS injection; scripts remain locked down via the nonce, which is what matters for XSS.
+- Dev builds add `'unsafe-eval'` to `script-src` for Fast Refresh only — gated on `NODE_ENV !== 'production'`.
+- Since nothing in `app/` reads a per-request header, the root route stays statically prerendered at build time — the middleware's nonce doesn't force dynamic rendering.
 
 ### Other headers
 

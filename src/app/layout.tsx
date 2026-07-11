@@ -8,7 +8,7 @@ import "./globals.css";
  * ("Noto Nastaliq Urdu", "Gulzar", "Noto Naskh Arabic", "Playfair Display",
  * "Noto Serif Devanagari") for correct shaping via document.fonts.load(),
  * across RTL (Urdu/Arabic) and LTR (Latin/Devanagari) scripts alike. The
- * CSP in next.config.mjs allowlists exactly fonts.googleapis.com (styles)
+ * CSP (src/middleware.ts) allowlists exactly fonts.googleapis.com (styles)
  * and fonts.gstatic.com (font binaries) — nothing else.
  */
 const GOOGLE_FONTS_HREF =
@@ -93,6 +93,11 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           // Static, developer-controlled JSON — no user input flows here.
+          // No CSP nonce needed: browsers don't enforce script-src against
+          // non-JS script types like application/ld+json (it's inert data,
+          // never executed) — adding one caused a hydration mismatch,
+          // since browsers hide a script's nonce attribute from the DOM
+          // right after insertion.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>

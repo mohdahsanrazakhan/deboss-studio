@@ -142,6 +142,102 @@ body {
   background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
 }
 
+/* My sets (user-saved snapshots, distinct from the built-in Presets) */
+.set-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.set-chip {
+  display: inline-flex; align-items: stretch;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; overflow: hidden;
+  transition: border-color .15s, background .15s;
+}
+.set-chip:hover { border-color: var(--accent); }
+.set-chip.is-active { border-color: var(--accent); background: var(--accent); }
+.set-chip-name {
+  font: inherit; font-size: .82rem; font-weight: 500;
+  padding: 8px 6px 8px 10px; border: 0; background: transparent; color: var(--ink);
+  cursor: pointer; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.set-chip.is-active .set-chip-name { color: var(--accent-ink); }
+.set-chip-delete {
+  font: inherit; line-height: 1; font-size: 1rem;
+  padding: 0 9px; border: 0; border-left: 1px solid var(--line);
+  background: transparent; color: var(--ink-soft); cursor: pointer;
+}
+.set-chip-delete:hover { color: var(--ink); background: rgba(0,0,0,.04); }
+.set-chip.is-active .set-chip-delete { border-left-color: rgba(255,255,255,.3); color: var(--accent-ink); opacity: .8; }
+.set-chip.is-active .set-chip-delete:hover { opacity: 1; background: rgba(255,255,255,.12); }
+
+.set-empty { margin: 0 0 12px; font-size: .82rem; color: var(--ink-soft); }
+
+/* "+ Add set" toggle — collapsed state of the accordion */
+.set-add-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: .82rem; font-weight: 500;
+  padding: 8px 14px; border-radius: 10px; cursor: pointer;
+  border: 1px dashed var(--line); background: transparent; color: var(--ink-soft);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.set-add-toggle:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,111,90,.06); }
+.set-add-toggle span { font-size: 1rem; line-height: 1; }
+
+/* Save-set form — expanded state of the accordion */
+.set-save-row { display: flex; gap: 8px; animation: set-add-in .16s ease; }
+.set-save-row input {
+  flex: 1; min-width: 0; font: inherit; font-size: .85rem;
+  padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px;
+  background: #fff; color: var(--ink); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.set-save-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124,111,90,.14);
+}
+.set-add-cancel {
+  font: inherit; line-height: 1; font-size: 1rem;
+  padding: 0 12px; border: 1px solid var(--line); border-radius: 9px;
+  background: #fff; color: var(--ink-soft); cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.set-add-cancel:hover { border-color: var(--accent); color: var(--ink); }
+
+@keyframes set-add-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.btn.small { padding: 8px 14px; font-size: .82rem; }
+.btn.danger {
+  background: #a8452e; color: #fff; border-color: #a8452e;
+}
+.btn.danger:hover { box-shadow: 0 6px 18px rgba(168,69,46,.30); }
+
+/* Confirm dialog */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(20,17,12,.42);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: modal-fade-in .15s ease;
+}
+.modal {
+  width: 100%; max-width: 360px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+  animation: modal-pop-in .18s ease;
+}
+.modal h2 { margin: 0 0 8px; font-size: 1.05rem; font-weight: 600; color: var(--ink); }
+.modal p { margin: 0 0 18px; font-size: .88rem; color: var(--ink-soft); line-height: 1.5; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+@keyframes modal-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-pop-in {
+  from { opacity: 0; transform: translateY(6px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Sliders */
 .slider { margin-bottom: 14px; }
 .slider:last-child { margin-bottom: 0; }
@@ -285,9 +381,11 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   .actions .btn { flex: 1; }
   .field-row { flex-direction: column; align-items: flex-start; }
   select#font, select#aspect { max-width: none; width: 100%; }
+  .set-save-row { flex-wrap: wrap; }
+  .set-save-row input { flex-basis: 100%; }
 }
 
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  * { transition: none !important; animation: none !important; }
 }

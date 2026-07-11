@@ -1,5 +1,6 @@
 import type {
   AspectId,
+  CustomSet,
   DebossState,
   FontFamily,
   PaperTone,
@@ -24,6 +25,12 @@ export const MAX_LOGICAL_H = 1100;
 export const MIN_LOGICAL_W = 240;
 /** Hard cap on input length — a canvas-render DoS guard, generous for real use. */
 export const MAX_TEXT_LENGTH = 2000;
+/** localStorage key for user-saved custom sets (see CustomSet in types/deboss.ts). */
+export const CUSTOM_SETS_STORAGE_KEY = "textDebossStudio.customSets";
+/** Max length for a custom set's name. */
+export const MAX_SET_NAME_LENGTH = 40;
+/** Cap on saved custom sets — keeps the list usable and storage bounded. */
+export const MAX_CUSTOM_SETS = 24;
 
 export const DEFAULT_TEXT = "بسمِ اللہ\nالرحمٰن الرحیم";
 
@@ -154,4 +161,21 @@ export function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): stri
   const toHex = (v: number) =>
     Math.min(255, Math.max(0, Math.round(v))).toString(16).padStart(2, "0");
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+/** Strip `text` from a DebossState to build a CustomSet snapshot (a Set excludes the typed text). */
+export function toSetSnapshot(s: DebossState): CustomSet["state"] {
+  const {
+    font, align, transparent, paper, depth, shadow, highlight, blur,
+    texture, fontSize, tint, tintStrength, shadowColor, aspect,
+  } = s;
+  return {
+    font, align, transparent, paper, depth, shadow, highlight, blur,
+    texture, fontSize, tint, tintStrength, shadowColor, aspect,
+  };
+}
+
+/** Generate a locally-unique id for a new CustomSet. */
+export function generateSetId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

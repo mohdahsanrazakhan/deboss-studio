@@ -24,6 +24,7 @@ import {
 } from "react";
 import type {
   AspectId,
+  CustomSet,
   DebossState,
   FontFamily,
   PresetId,
@@ -31,15 +32,20 @@ import type {
   TextAlign,
 } from "@/types/deboss";
 import {
+  CUSTOM_SETS_STORAGE_KEY,
   DEFAULT_HINT,
   DEFAULT_STATE,
   EXPORT_SCALE,
+  MAX_CUSTOM_SETS,
   MAX_PREVIEW_DPR,
+  MAX_SET_NAME_LENGTH,
   MAX_TEXT_LENGTH,
   MIN_LOGICAL_W,
   PRESETS,
+  generateSetId,
   hexToRgb,
   parsePaperKey,
+  toSetSnapshot,
 } from "@/lib/deboss/constants";
 import {
   buildExportCanvas,
@@ -52,6 +58,8 @@ import {
 export function useDebossStudio() {
   const [state, setState] = useState<DebossState>(DEFAULT_STATE);
   const [activePreset, setActivePreset] = useState<PresetId | null>(null);
+  const [customSets, setCustomSets] = useState<CustomSet[]>([]);
+  const [activeCustomSet, setActiveCustomSet] = useState<string | null>(null);
   const [hint, setHint] = useState<string>(DEFAULT_HINT);
   const [isCopying, setIsCopying] = useState(false);
 
@@ -61,6 +69,11 @@ export function useDebossStudio() {
   // Latest state for the render loop, without re-creating callbacks.
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  // Latest custom sets for handlers that shouldn't be re-created per save/delete.
+  const customSetsRef = useRef(customSets);
+  customSetsRef.current = customSets;
+  const customSetsLoadedRef = useRef(false);
 
   const fontsReadyRef = useRef(false);
   const rafRef = useRef<number | null>(null);
@@ -147,6 +160,34 @@ export function useDebossStudio() {
   }, [scheduleRender]);
 
   /* ------------------------------------------------------------------
+     Custom sets — load once on mount, persist on every change. Guarded
+     with a "loaded" flag so the pre-load empty array never overwrites
+     whatever is already in storage.
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(CUSTOM_SETS_STORAGE_KEY);
+      if (raw) setCustomSets(JSON.parse(raw) as CustomSet[]);
+    } catch {
+      /* storage unavailable or corrupt — start with an empty list */
+    } finally {
+      customSetsLoadedRef.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!customSetsLoadedRef.current) return;
+    try {
+      window.localStorage.setItem(
+        CUSTOM_SETS_STORAGE_KEY,
+        JSON.stringify(customSets),
+      );
+    } catch {
+      /* storage full/unavailable — sets stay in memory for this session */
+    }
+  }, [customSets]);
+
+  /* ------------------------------------------------------------------
      State mutators
      ------------------------------------------------------------------ */
   const setText = useCallback((text: string) => {
@@ -155,15 +196,18 @@ export function useDebossStudio() {
   }, []);
 
   const setSlider = useCallback((id: SliderId, value: number) => {
-    setActivePreset(null); // manual tweak deactivates the preset chip
+    setActivePreset(null); // manual tweak deactivates the preset/set chip
+    setActiveCustomSet(null);
     setState((s) => ({ ...s, [id]: value }));
   }, []);
 
   const setAlign = useCallback((align: TextAlign) => {
+    setActiveCustomSet(null);
     setState((s) => ({ ...s, align }));
   }, []);
 
   const setFont = useCallback(async (font: FontFamily) => {
+    setActiveCustomSet(null);
     setState((s) => ({ ...s, font }));
     await ensureFont(font, stateRef.current.fontSize);
     // ensureFont may resolve after React's paint; force a fresh frame.
@@ -173,22 +217,27 @@ export function useDebossStudio() {
 
   const setPaper = useCallback((key: string) => {
     setActivePreset(null);
+    setActiveCustomSet(null);
     setState((s) => ({ ...s, paper: parsePaperKey(key) }));
   }, []);
 
   const setTransparent = useCallback((transparent: boolean) => {
+    setActiveCustomSet(null);
     setState((s) => ({ ...s, transparent }));
   }, []);
 
   const setTint = useCallback((hex: string) => {
+    setActiveCustomSet(null);
     setState((s) => ({ ...s, tint: hexToRgb(hex) }));
   }, []);
 
   const setShadowColor = useCallback((hex: string) => {
+    setActiveCustomSet(null);
     setState((s) => ({ ...s, shadowColor: hexToRgb(hex) }));
   }, []);
 
   const setAspect = useCallback((aspect: AspectId) => {
+    setActiveCustomSet(null);
     setState((s) => ({ ...s, aspect }));
   }, []);
 
@@ -196,6 +245,7 @@ export function useDebossStudio() {
     const p = PRESETS.find((x) => x.id === id);
     if (!p) return;
     setActivePreset(id);
+    setActiveCustomSet(null);
     setState((s) => ({
       ...s,
       depth: p.depth,
@@ -225,6 +275,48 @@ export function useDebossStudio() {
       setHint(DEFAULT_HINT);
       setHintFlash(false);
     }, 2600);
+  }, []);
+
+  /* ------------------------------------------------------------------
+     Custom set actions — save/apply/delete a user-named full snapshot
+     (everything but the typed text). Kept separate from applyPreset:
+     a Set restores font/align/aspect/tint too, a Preset never does.
+     ------------------------------------------------------------------ */
+  /** Returns whether the set was actually saved, so the UI knows whether to collapse the form. */
+  const saveCurrentAsSet = useCallback((name: string): boolean => {
+    const trimmed = name.trim().slice(0, MAX_SET_NAME_LENGTH);
+    if (!trimmed) return false;
+    if (customSetsRef.current.length >= MAX_CUSTOM_SETS) {
+      flashHint(`Set limit reached (${MAX_CUSTOM_SETS}) — delete one first`);
+      return false;
+    }
+    const newSet: CustomSet = {
+      id: generateSetId(),
+      name: trimmed,
+      createdAt: Date.now(),
+      state: toSetSnapshot(stateRef.current),
+    };
+    setCustomSets((sets) => [...sets, newSet]);
+    setActivePreset(null);
+    setActiveCustomSet(newSet.id);
+    flashHint(`Saved "${trimmed}"`);
+    return true;
+  }, [flashHint]);
+
+  const applyCustomSet = useCallback(async (id: string) => {
+    const set = customSetsRef.current.find((x) => x.id === id);
+    if (!set) return;
+    setActivePreset(null);
+    setActiveCustomSet(id);
+    setState((s) => ({ ...s, ...set.state }));
+    await ensureFont(set.state.font, set.state.fontSize);
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(renderPreview);
+  }, [renderPreview]);
+
+  const deleteCustomSet = useCallback((id: string) => {
+    setCustomSets((sets) => sets.filter((x) => x.id !== id));
+    setActiveCustomSet((cur) => (cur === id ? null : cur));
   }, []);
 
   /* ------------------------------------------------------------------
@@ -273,6 +365,8 @@ export function useDebossStudio() {
   return {
     state,
     activePreset,
+    customSets,
+    activeCustomSet,
     paperKey,
     hint,
     hintFlash,
@@ -289,6 +383,9 @@ export function useDebossStudio() {
     setShadowColor,
     setAspect,
     applyPreset,
+    saveCurrentAsSet,
+    applyCustomSet,
+    deleteCustomSet,
     downloadPng,
     copyImage,
   };

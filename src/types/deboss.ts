@@ -79,6 +79,19 @@ export interface Preset {
   paper: string;
 }
 
+/**
+ * A user-saved snapshot of the full look — font, layout, engraving, and
+ * colours — everything in `DebossState` except the typed text. Distinct
+ * from the built-in `Preset`s: these are created, named, and deleted by
+ * the user, and persisted client-side (see `CUSTOM_SETS_STORAGE_KEY`).
+ */
+export interface CustomSet {
+  id: string;
+  name: string;
+  createdAt: number;
+  state: Omit<DebossState, "text">;
+}
+
 export interface PaperTone {
   /** "r,g,b" key used to match a preset's paper value. */
   key: string;

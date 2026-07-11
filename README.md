@@ -56,7 +56,7 @@ src/
 - `docs/SECURITY.md` — threat model, CSP, and header policy
 - `docs/SEO-PLAN.md` — implemented SEO + roadmap
 - `docs/CONTRIBUTING.md` — conventions and workflow
-- `.claude/skills/urdu-deboss-engine/SKILL.md` — deep guide to the deboss engine for AI agents
+- `.claude/skills/text-deboss-engine/SKILL.md` — deep guide to the deboss engine for AI agents
 
 ## Requirements
 
