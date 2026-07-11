@@ -1,0 +1,29 @@
+{
+  "name": "text-deboss-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Press any text into premium textured paper — a canvas-based debossed/letterpress text generator.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^15.3.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.28.0",
+    "eslint-config-next": "^15.3.4",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+}
