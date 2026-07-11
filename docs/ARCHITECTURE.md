@@ -9,7 +9,7 @@ Text Deboss Studio is a fully client-rendered canvas application wrapped in a se
 │ middleware.ts — per-request CSP nonce         [edge]      │
 ├──────────────────────────────────────────────────────────┤
 │ app/ (App Router)                                        │
-│   layout.tsx  — metadata, fonts, JSON-LD   [server]      │
+│   layout.tsx  — metadata, fonts, JSON-LD   [server, async]│
 │   page.tsx    — shell: Header + Studio     [server]      │
 │   robots.ts / sitemap.ts / manifest.ts     [build-time]  │
 ├──────────────────────────────────────────────────────────┤
@@ -66,10 +66,10 @@ They're the app's only persisted data, stored as JSON in `localStorage` under `C
 
 `page.tsx` and `Header` are server components — the header, landmarks, and metadata are in the HTML for crawlers. `Studio` is the single `"use client"` island; hydration cost is limited to it (First Load JS ≈ 107 kB total).
 
-## CSP nonce
+## CSP nonce + why the root route isn't static
 
-`middleware.ts` runs on every request, generates a random nonce, and sets it on the *request's* `Content-Security-Policy` header (see `docs/SECURITY.md` for the full rationale — Next's App Router needs a nonced/trusted `script-src` for its own inline hydration scripts, and a static `script-src 'self'` blocks them entirely in production). Next.js's renderer reads that header and automatically applies the nonce to the scripts it manages — nothing in `app/` has to touch it. The one inline script the app authors itself (the JSON-LD block in `layout.tsx`) does **not** get a nonce: it's `type="application/ld+json"`, which browsers never enforce `script-src` against (inert data, not executed), and nonce'ing it anyway previously caused a hydration mismatch (browsers strip a script's `nonce` attribute from the DOM right after insertion). Because nothing reads a per-request header, `layout.tsx` stays a plain sync Server Component and the root route stays statically prerendered.
+`middleware.ts` runs on every request, generates a random nonce, and sets it as both the `x-nonce` request header and the response's `Content-Security-Policy` header (see `docs/SECURITY.md` for the full rationale — Next's App Router needs a nonced/trusted `script-src` for its own scripts, and a static `script-src 'self'` blocks them entirely in production). `layout.tsx` calls `headers()` — reading a Dynamic API is what makes Next render this route per-request rather than serving a cached static shell, which is the only way its renderer can see this request's nonce and stamp it onto the scripts it manages. Skip that call and every script gets blocked (we hit this once already). The nonce value itself is **not** applied to the one inline script the app authors (the JSON-LD block): it's `type="application/ld+json"`, which browsers never enforce `script-src` against (inert data, not executed), and nonce'ing it caused a hydration mismatch (browsers strip a script's `nonce` attribute from the DOM right after insertion). Net effect: `layout.tsx` is `async` and the root route renders dynamically (`ƒ` in the build output) instead of being statically prerendered — an accepted, required trade-off; there's no expensive data fetching on this route, so the cost is negligible.
 
 ## Build & quality gates
 
-`npm run build` runs ESLint (`next/core-web-vitals` + TS rules) and strict type-checking (`strict`, `noUncheckedIndexedAccess`). All routes are statically prerendered — the middleware's CSP nonce is applied per-request at the edge without forcing any route to render dynamically.
+`npm run build` runs ESLint (`next/core-web-vitals` + TS rules) and strict type-checking (`strict`, `noUncheckedIndexedAccess`). The root route (`/`) renders dynamically because of the CSP nonce (see above); `robots.txt`, `sitemap.xml`, and `manifest.webmanifest` remain statically generated since they're separate route handlers outside the React tree.

@@ -4,23 +4,26 @@ import type { NextRequest } from "next/server";
 /**
  * Per-request, nonce-based Content-Security-Policy.
  *
- * Next.js App Router injects several inline <script> tags into every page
- * (RSC flight-data pushes + the hydration bootstrap) — a static
- * `script-src 'self'` with no 'unsafe-inline'/nonce/hash blocks ALL of
- * them in production, so React never hydrates and the page renders blank
- * (this bit us on the first real deploy; dev mode masks it because dev
- * CSP adds 'unsafe-inline'). A random nonce per request, forwarded on the
- * *request's* Content-Security-Policy header, lets Next.js's renderer see
- * it and automatically apply it to the scripts it manages. `'strict-dynamic'`
- * lets those trusted scripts load their own child chunks (webpack/RSC
- * chunk loading).
+ * Next.js App Router injects several inline/external <script> tags into
+ * every page (webpack/RSC chunk loaders + flight-data pushes + the
+ * hydration bootstrap) — a static `script-src 'self'` with no
+ * 'unsafe-inline'/nonce/hash blocks ALL of them in production, so React
+ * never hydrates and the page renders blank (this bit us on the first
+ * real deploy; dev mode masks it because dev CSP adds 'unsafe-inline').
  *
- * Nothing in `app/` needs the nonce directly — our own inline script
- * (the JSON-LD block in layout.tsx) is `type="application/ld+json"`,
- * which browsers don't enforce script-src against (it's inert data,
- * never executed), so it doesn't need one. Giving it one anyway caused a
- * hydration mismatch, since browsers hide a script's `nonce` attribute
- * from the DOM right after insertion — don't re-add it.
+ * A random nonce per request, forwarded on the *request's*
+ * Content-Security-Policy header, lets Next.js's renderer see it and
+ * automatically apply it to every script it manages — BUT only if
+ * something in the render tree actually calls `headers()` (see the
+ * comment in `app/layout.tsx`). Skip that call and Next has no signal to
+ * stamp the nonce onto its own scripts, so the strict CSP blocks
+ * everything again (we hit this too — don't remove that `headers()` call
+ * even though its return value looks unused there).
+ *
+ * `'strict-dynamic'` lets those nonce-trusted scripts load their own
+ * child chunks; browsers that support it then ignore `'self'` for
+ * script-src (that's the "Ignoring 'self'" console message — informational,
+ * not an error).
  *
  * This REPLACES the CSP that used to live in next.config.mjs — do not
  * reintroduce a static Content-Security-Policy header there, or the
@@ -46,6 +49,7 @@ export function middleware(request: NextRequest) {
   ].join("; ");
 
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", csp);
 
   const response = NextResponse.next({

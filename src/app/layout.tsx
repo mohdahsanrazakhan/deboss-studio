@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -26,6 +27,9 @@ export const metadata: Metadata = {
   creator: siteConfig.creator,
   alternates: {
     canonical: "/",
+  },
+  icons: {
+    icon: "/icon.svg",
   },
   openGraph: {
     type: "website",
@@ -77,9 +81,20 @@ const jsonLd = {
   inLanguage: ["en", "ur", "ar", "hi"],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // This read is REQUIRED even though the value below is unused: calling
+  // headers() (a Dynamic API) is what makes Next.js render this route
+  // per-request instead of statically, which is the only way it can pick
+  // up src/middleware.ts's fresh-per-request nonce and stamp it onto the
+  // scripts it renders. Skip this call and every script gets blocked in
+  // production — Next has no per-request nonce to apply, and a
+  // build-time-static shell can never match middleware's ever-changing
+  // nonce anyway. Do not remove it, and do not apply the value to the
+  // JSON-LD <script> below (see that comment for why).
+  await headers();
+
   return (
     <html lang="en">
       <head>
