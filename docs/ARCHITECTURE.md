@@ -62,6 +62,8 @@ Preset semantics: applying a preset overwrites the five engraving parameters + p
 
 They're the app's only persisted data, stored as JSON in `localStorage` under `CUSTOM_SETS_STORAGE_KEY` — still no server, no cookies, no network write. `useDebossStudio.ts` loads them once on mount and re-persists on every change, guarded by a `customSetsLoadedRef` so the pre-load empty array can't clobber storage before the initial read resolves. Every `localStorage` call is wrapped in `try/catch` since it can throw (private browsing, quota, disabled storage) — a set then just lives for the current session instead of failing the app.
 
+**Default set**: one set's id can be stored separately under `DEFAULT_SET_STORAGE_KEY` (`defaultSetId` state, toggled via `toggleDefaultSet`). The load effect that reads `customSets` also looks up this id and, if it still matches a saved set, applies that set's `state` to `DebossState` *in the same effect* — not a later one — so the change lands before the font-loading promise resolves and the first real canvas paint happens (`renderPreview` is gated on `fontsReadyRef`, which is far slower than a synchronous `localStorage.getItem`). That ordering is what avoids a visible flash of the built-in default before the user's default appears. `deleteCustomSet` clears `defaultSetId` if the deleted set was the default.
+
 ## Server vs client boundary
 
 `page.tsx` and `Header` are server components — the header, landmarks, and metadata are in the HTML for crawlers. `Studio` is the single `"use client"` island; hydration cost is limited to it (First Load JS ≈ 107 kB total).

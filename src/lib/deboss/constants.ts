@@ -27,6 +27,8 @@ export const MIN_LOGICAL_W = 240;
 export const MAX_TEXT_LENGTH = 2000;
 /** localStorage key for user-saved custom sets (see CustomSet in types/deboss.ts). */
 export const CUSTOM_SETS_STORAGE_KEY = "textDebossStudio.customSets";
+/** localStorage key for which custom set (if any) auto-applies its style on load. */
+export const DEFAULT_SET_STORAGE_KEY = "textDebossStudio.defaultSetId";
 /** Max length for a custom set's name. */
 export const MAX_SET_NAME_LENGTH = 40;
 /** Cap on saved custom sets — keeps the list usable and storage bounded. */

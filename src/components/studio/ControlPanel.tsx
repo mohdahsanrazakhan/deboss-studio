@@ -34,6 +34,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     activePreset,
     customSets,
     activeCustomSet,
+    defaultSetId,
     paperKey,
     setText,
     setSlider,
@@ -47,6 +48,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     saveCurrentAsSet,
     applyCustomSet,
     deleteCustomSet,
+    toggleDefaultSet,
   } = studio;
 
   // UI-only: whether the "name + save" form is expanded, and which set
@@ -114,6 +116,24 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
                   onClick={() => void applyCustomSet(set.id)}
                 >
                   {set.name}
+                </button>
+                <button
+                  type="button"
+                  className={`set-chip-star${defaultSetId === set.id ? " is-default" : ""}`}
+                  aria-pressed={defaultSetId === set.id}
+                  aria-label={
+                    defaultSetId === set.id
+                      ? `Unset "${set.name}" as the default style on load`
+                      : `Set "${set.name}" as the default style on load`
+                  }
+                  title={
+                    defaultSetId === set.id
+                      ? "Default on load — click to unset"
+                      : "Set as default on load"
+                  }
+                  onClick={() => toggleDefaultSet(set.id)}
+                >
+                  ★
                 </button>
                 <button
                   type="button"

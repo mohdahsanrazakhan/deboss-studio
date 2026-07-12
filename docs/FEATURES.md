@@ -30,7 +30,8 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 
 - [x] Save the *entire* current look — font, alignment, aspect, engraving params, paper, tint, tint strength, shadow colour — under a name, excluding the typed text
 - [x] Persisted client-side in `localStorage` (`CUSTOM_SETS_STORAGE_KEY`); survives reloads, never sent to a server
-- [x] Apply a saved set with one click; delete with the × on its chip
+- [x] Apply a saved set with one click; delete (with confirm dialog) via the × on its chip
+- [x] Star one set as the **default on load** (★ on its chip) — its style (not its text) auto-applies on every future visit, before the first canvas paint so there's no flash of the built-in look; persisted separately (`DEFAULT_SET_STORAGE_KEY`); deleting the default set clears the default too
 - [x] Any manual tweak (slider, font, align, paper, tint, aspect, transparency) clears the active set chip, same as Presets
 - [x] Capped at `MAX_CUSTOM_SETS` (24) with a hint when the limit is hit; name capped at `MAX_SET_NAME_LENGTH` (40 chars)
 

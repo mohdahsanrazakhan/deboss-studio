@@ -11,6 +11,8 @@
  *  - rAF-coalesced preview rendering (one paint per frame max).
  *  - ResizeObserver-driven re-layout (the preview width is fluid).
  *  - High-resolution PNG export: download + clipboard copy.
+ *  - User-saved "sets" in localStorage, one of which can be starred as the
+ *    default that auto-applies its style (not its text) on every future load.
  *
  * The hook returns plain values + handlers; components stay dumb.
  */
@@ -34,6 +36,7 @@ import type {
 import {
   CUSTOM_SETS_STORAGE_KEY,
   DEFAULT_HINT,
+  DEFAULT_SET_STORAGE_KEY,
   DEFAULT_STATE,
   EXPORT_SCALE,
   MAX_CUSTOM_SETS,
@@ -60,6 +63,7 @@ export function useDebossStudio() {
   const [activePreset, setActivePreset] = useState<PresetId | null>(null);
   const [customSets, setCustomSets] = useState<CustomSet[]>([]);
   const [activeCustomSet, setActiveCustomSet] = useState<string | null>(null);
+  const [defaultSetId, setDefaultSetId] = useState<string | null>(null);
   const [hint, setHint] = useState<string>(DEFAULT_HINT);
   const [isCopying, setIsCopying] = useState(false);
 
@@ -163,13 +167,29 @@ export function useDebossStudio() {
      Custom sets — load once on mount, persist on every change. Guarded
      with a "loaded" flag so the pre-load empty array never overwrites
      whatever is already in storage.
+
+     The default set (if any) is applied to `state` in this SAME effect,
+     synchronously with the load — not in a later render — so the very
+     first canvas paint (gated on fonts being ready, which takes far
+     longer than this localStorage read) already reflects it. No flash
+     of the built-in default before the user's default set appears.
      ------------------------------------------------------------------ */
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(CUSTOM_SETS_STORAGE_KEY);
-      if (raw) setCustomSets(JSON.parse(raw) as CustomSet[]);
+      const loadedSets: CustomSet[] = raw ? (JSON.parse(raw) as CustomSet[]) : [];
+      setCustomSets(loadedSets);
+
+      const storedDefaultId = window.localStorage.getItem(DEFAULT_SET_STORAGE_KEY);
+      const defaultSet = storedDefaultId
+        ? loadedSets.find((s) => s.id === storedDefaultId)
+        : undefined;
+      if (defaultSet) {
+        setDefaultSetId(defaultSet.id);
+        setState((s) => ({ ...s, ...defaultSet.state }));
+      }
     } catch {
-      /* storage unavailable or corrupt — start with an empty list */
+      /* storage unavailable or corrupt — start with an empty list, no default */
     } finally {
       customSetsLoadedRef.current = true;
     }
@@ -186,6 +206,19 @@ export function useDebossStudio() {
       /* storage full/unavailable — sets stay in memory for this session */
     }
   }, [customSets]);
+
+  useEffect(() => {
+    if (!customSetsLoadedRef.current) return;
+    try {
+      if (defaultSetId) {
+        window.localStorage.setItem(DEFAULT_SET_STORAGE_KEY, defaultSetId);
+      } else {
+        window.localStorage.removeItem(DEFAULT_SET_STORAGE_KEY);
+      }
+    } catch {
+      /* storage full/unavailable — default choice stays in memory for this session */
+    }
+  }, [defaultSetId]);
 
   /* ------------------------------------------------------------------
      State mutators
@@ -317,6 +350,12 @@ export function useDebossStudio() {
   const deleteCustomSet = useCallback((id: string) => {
     setCustomSets((sets) => sets.filter((x) => x.id !== id));
     setActiveCustomSet((cur) => (cur === id ? null : cur));
+    setDefaultSetId((cur) => (cur === id ? null : cur));
+  }, []);
+
+  /** Marks `id` as the set that auto-applies on future page loads; clicking the current default unsets it. */
+  const toggleDefaultSet = useCallback((id: string) => {
+    setDefaultSetId((cur) => (cur === id ? null : id));
   }, []);
 
   /* ------------------------------------------------------------------
@@ -367,6 +406,7 @@ export function useDebossStudio() {
     activePreset,
     customSets,
     activeCustomSet,
+    defaultSetId,
     paperKey,
     hint,
     hintFlash,
@@ -386,6 +426,7 @@ export function useDebossStudio() {
     saveCurrentAsSet,
     applyCustomSet,
     deleteCustomSet,
+    toggleDefaultSet,
     downloadPng,
     copyImage,
   };
