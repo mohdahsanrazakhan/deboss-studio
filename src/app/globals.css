@@ -89,7 +89,11 @@ body {
 }
 
 .group { padding: 16px 0; border-bottom: 1px solid var(--line); }
-.group:last-child { border-bottom: 0; }
+/* Groups are wrapped in a .section-modal for the mobile bottom-sheet menu
+   (see below) — target the truly-last group by chaining through the
+   wrapper, since plain `.group:last-child` would now also match the last
+   group INSIDE each earlier wrapper (e.g. "My sets", "Engraving"). */
+.section-modal:last-child .group:last-child { border-bottom: 0; }
 
 .group-label {
   display: block;
@@ -100,6 +104,14 @@ body {
   color: var(--ink-soft);
   margin-bottom: 10px;
 }
+
+/* ----------------- Mobile menu + bottom sheets (SectionSheet) -----------
+   Hidden entirely on wide screens; see the max-width:880px block below for
+   the mobile-only rules that turn .section-modal into an actual sheet. */
+.mobile-menu { display: none; }
+
+.section-modal-backdrop { display: none; border: 0; padding: 0; }
+.section-modal-header { display: none; }
 
 /* Textarea (auto RTL/LTR direction — see detectTextDirection) */
 #text-input {
@@ -389,6 +401,72 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 @media (max-width: 880px) {
   .layout { grid-template-columns: 1fr; }
   .panel { position: static; }
+
+  /* Text stays inline; Presets/Sets, Engraving, and Type & paper move into
+     bottom sheets reached from this menu, so the preview sits right below
+     it instead of at the bottom of a long stack of controls. */
+  .mobile-menu {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin: 14px 0 4px;
+  }
+  .mobile-menu-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    padding: 14px 6px 12px; border: 1px solid var(--line); border-radius: 16px;
+    background: #fff; color: var(--ink-soft);
+    font: inherit; font-size: .72rem; font-weight: 600; letter-spacing: .01em;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .08s;
+  }
+  .mobile-menu-btn svg { color: var(--accent); }
+  .mobile-menu-btn:hover { border-color: var(--accent); background: rgba(124,111,90,.05); }
+  .mobile-menu-btn:active { transform: translateY(1px); }
+
+  /* SectionSheet: hidden by default, becomes a bottom sheet once opened. */
+  .section-modal { display: none; }
+  .section-modal.is-open { display: block; }
+
+  .section-modal-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 40;
+    background: rgba(20,17,12,.44);
+    animation: modal-fade-in .18s ease;
+  }
+
+  .section-modal-panel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 41;
+    max-height: 82vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: var(--panel);
+    border-radius: 22px 22px 0 0;
+    padding: 8px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -16px 44px rgba(40,35,25,.24);
+    animation: sheet-slide-up .24s cubic-bezier(.32, .72, 0, 1);
+  }
+  .section-modal-panel::before {
+    content: ""; display: block;
+    width: 36px; height: 4px; margin: 2px auto 12px;
+    border-radius: 2px; background: var(--line);
+  }
+  .section-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: var(--panel);
+    padding-bottom: 12px;
+    font-size: .95rem; font-weight: 600; color: var(--ink);
+  }
+  .section-modal-close {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid var(--line); background: #fff; color: var(--ink-soft);
+    cursor: pointer; transition: border-color .15s, color .15s;
+  }
+  .section-modal-close:hover { border-color: var(--accent); color: var(--ink); }
+
+  /* Inside a sheet each group is the whole show — no trailing divider. */
+  .section-modal-panel .group:first-child { padding-top: 2px; }
+  .section-modal-panel .group:last-child { border-bottom: 0; padding-bottom: 2px; }
+}
+
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 @media (max-width: 460px) {

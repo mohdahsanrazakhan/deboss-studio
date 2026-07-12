@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Star, X } from "lucide-react";
+import { Layers, Plus, SlidersHorizontal, Star, Type as TypeIcon, X } from "lucide-react";
 import { useState } from "react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
 import type { AspectId, FontFamily, TextAlign } from "@/types/deboss";
@@ -16,12 +16,24 @@ import {
 } from "@/lib/deboss/constants";
 import { detectTextDirection } from "@/lib/deboss/direction";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { SectionSheet } from "./SectionSheet";
 
 /** Icon sizes for the "My sets" chips — star sits inline, delete is a small floating badge. */
 const CHIP_STAR_ICON_SIZE = 15;
 const CHIP_DELETE_ICON_SIZE = 12;
 /** Icon size for the add-set form's own controls (cancel × and the "+" toggle). */
 const CHIP_ICON_SIZE = 14;
+
+/**
+ * On narrow screens (see max-width:880px in globals.css), Presets/Sets,
+ * Engraving, and Type & paper collapse into bottom sheets reached through
+ * this menu — see SectionSheet for how the same markup serves both roles.
+ */
+const MOBILE_MENU: { id: string; label: string; Icon: typeof Layers }[] = [
+  { id: "presets", label: "Presets & Sets", Icon: Layers },
+  { id: "engraving", label: "Engraving", Icon: SlidersHorizontal },
+  { id: "type-paper", label: "Type & Paper", Icon: TypeIcon },
+];
 
 const ALIGNMENTS: { value: TextAlign; label: string }[] = [
   { value: "right", label: "Right" },
@@ -65,6 +77,12 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
   const pendingDeleteSet =
     customSets.find((s) => s.id === pendingDeleteId) ?? null;
 
+  // UI-only: which section is open as a mobile bottom sheet (see SectionSheet).
+  // Irrelevant on wide screens — the mobile-menu buttons that set it are
+  // CSS-hidden there, so this never leaves `null` outside a mobile context.
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const closeSection = () => setOpenSection(null);
+
   return (
     <aside className="panel" aria-label="Controls">
       {/* Text input */}
@@ -83,6 +101,28 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
         />
       </section>
 
+      {/* Mobile-only menu — opens the sections below as bottom sheets. Hidden
+          on wide screens, where those sections already render inline. */}
+      <nav className="mobile-menu" aria-label="Style menu">
+        {MOBILE_MENU.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className="mobile-menu-btn"
+            onClick={() => setOpenSection(id)}
+          >
+            <Icon size={20} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <SectionSheet
+        id="presets"
+        title="Presets & Sets"
+        openSection={openSection}
+        onClose={closeSection}
+      >
       {/* Presets */}
       <section className="group">
         <span className="group-label" id="presets-label">
@@ -203,6 +243,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
           </button>
         )}
       </section>
+      </SectionSheet>
 
       <ConfirmDialog
         open={pendingDeleteSet !== null}
@@ -220,6 +261,12 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
         onCancel={() => setPendingDeleteId(null)}
       />
 
+      <SectionSheet
+        id="engraving"
+        title="Engraving"
+        openSection={openSection}
+        onClose={closeSection}
+      >
       {/* Sliders */}
       <section className="group">
         <span className="group-label">Engraving</span>
@@ -243,7 +290,14 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
           </div>
         ))}
       </section>
+      </SectionSheet>
 
+      <SectionSheet
+        id="type-paper"
+        title="Type & Paper"
+        openSection={openSection}
+        onClose={closeSection}
+      >
       {/* Type & paper */}
       <section className="group">
         <span className="group-label">Type &amp; paper</span>
@@ -333,6 +387,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
           </div>
         </div>
       </section>
+      </SectionSheet>
     </aside>
   );
 }
