@@ -17,7 +17,10 @@ import {
 import { detectTextDirection } from "@/lib/deboss/direction";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-/** Icon size for the compact chip/form controls in the "My sets" section. */
+/** Icon sizes for the "My sets" chips — star sits inline, delete is a small floating badge. */
+const CHIP_STAR_ICON_SIZE = 15;
+const CHIP_DELETE_ICON_SIZE = 12;
+/** Icon size for the add-set form's own controls (cancel × and the "+" toggle). */
 const CHIP_ICON_SIZE = 14;
 
 const ALIGNMENTS: { value: TextAlign; label: string }[] = [
@@ -115,14 +118,6 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
               >
                 <button
                   type="button"
-                  className="set-chip-name"
-                  aria-pressed={activeCustomSet === set.id}
-                  onClick={() => void applyCustomSet(set.id)}
-                >
-                  {set.name}
-                </button>
-                <button
-                  type="button"
                   className={`set-chip-star${defaultSetId === set.id ? " is-default" : ""}`}
                   aria-pressed={defaultSetId === set.id}
                   aria-label={
@@ -138,9 +133,17 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
                   onClick={() => toggleDefaultSet(set.id)}
                 >
                   <Star
-                    size={CHIP_ICON_SIZE}
+                    size={CHIP_STAR_ICON_SIZE}
                     fill={defaultSetId === set.id ? "currentColor" : "none"}
                   />
+                </button>
+                <button
+                  type="button"
+                  className="set-chip-name"
+                  aria-pressed={activeCustomSet === set.id}
+                  onClick={() => void applyCustomSet(set.id)}
+                >
+                  {set.name}
                 </button>
                 <button
                   type="button"
@@ -148,7 +151,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
                   aria-label={`Delete set: ${set.name}`}
                   onClick={() => setPendingDeleteId(set.id)}
                 >
-                  <X size={CHIP_ICON_SIZE} />
+                  <X size={CHIP_DELETE_ICON_SIZE} />
                 </button>
               </div>
             ))}

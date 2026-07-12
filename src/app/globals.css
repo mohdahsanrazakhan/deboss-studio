@@ -143,39 +143,45 @@ body {
 }
 
 /* My sets (user-saved snapshots, distinct from the built-in Presets) */
-.set-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.set-row {
+  display: flex; flex-wrap: wrap;
+  gap: 16px 14px; /* extra row-gap clears the floating delete badge */
+  margin: 6px 0 16px;
+}
 .set-chip {
-  display: inline-flex; align-items: stretch;
-  border: 1px solid var(--line); border-radius: 10px;
-  background: #fff; overflow: hidden;
+  position: relative;
+  display: inline-flex; align-items: center;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  background: #fff;
   transition: border-color .15s, background .15s;
 }
 .set-chip:hover { border-color: var(--accent); }
 .set-chip.is-active { border-color: var(--accent); background: var(--accent); }
-.set-chip-name {
-  font: inherit; font-size: .82rem; font-weight: 500;
-  padding: 8px 6px 8px 10px; border: 0; background: transparent; color: var(--ink);
-  cursor: pointer; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.set-chip.is-active .set-chip-name { color: var(--accent-ink); }
 .set-chip-star {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 0 8px; border: 0; border-left: 1px solid var(--line);
-  background: transparent; color: var(--ink-soft); opacity: .4; cursor: pointer;
+  width: 32px; height: 32px; margin-left: 5px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--ink-soft); opacity: .55; cursor: pointer;
   transition: color .15s, opacity .15s;
 }
-.set-chip-star:hover { opacity: .8; }
+.set-chip-star:hover { opacity: .9; }
 .set-chip-star.is-default { color: var(--accent); opacity: 1; }
-.set-chip.is-active .set-chip-star { border-left-color: rgba(255,255,255,.3); color: var(--accent-ink); }
+.set-chip.is-active .set-chip-star { color: var(--accent-ink); opacity: .7; }
 .set-chip.is-active .set-chip-star.is-default { color: #ffe9b3; opacity: 1; }
-.set-chip-delete {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 0 9px; border: 0; border-left: 1px solid var(--line);
-  background: transparent; color: var(--ink-soft); cursor: pointer;
+.set-chip-name {
+  font: inherit; font-size: .86rem; font-weight: 500;
+  padding: 9px 16px 9px 2px; border: 0; background: transparent; color: var(--ink);
+  cursor: pointer; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.set-chip-delete:hover { color: var(--ink); background: rgba(0,0,0,.04); }
-.set-chip.is-active .set-chip-delete { border-left-color: rgba(255,255,255,.3); color: var(--accent-ink); opacity: .8; }
-.set-chip.is-active .set-chip-delete:hover { opacity: 1; background: rgba(255,255,255,.12); }
+.set-chip.is-active .set-chip-name { color: var(--accent-ink); }
+.set-chip-delete {
+  position: absolute; top: -8px; right: -8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--line); background: var(--panel); color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.set-chip-delete:hover { border-color: var(--accent); color: var(--ink); background: #fff; }
 
 .set-empty { margin: 0 0 12px; font-size: .82rem; color: var(--ink-soft); }
 
