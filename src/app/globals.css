@@ -159,7 +159,7 @@ body {
 }
 .set-chip.is-active .set-chip-name { color: var(--accent-ink); }
 .set-chip-star {
-  font: inherit; line-height: 1; font-size: .85rem;
+  display: inline-flex; align-items: center; justify-content: center;
   padding: 0 8px; border: 0; border-left: 1px solid var(--line);
   background: transparent; color: var(--ink-soft); opacity: .4; cursor: pointer;
   transition: color .15s, opacity .15s;
@@ -169,7 +169,7 @@ body {
 .set-chip.is-active .set-chip-star { border-left-color: rgba(255,255,255,.3); color: var(--accent-ink); }
 .set-chip.is-active .set-chip-star.is-default { color: #ffe9b3; opacity: 1; }
 .set-chip-delete {
-  font: inherit; line-height: 1; font-size: 1rem;
+  display: inline-flex; align-items: center; justify-content: center;
   padding: 0 9px; border: 0; border-left: 1px solid var(--line);
   background: transparent; color: var(--ink-soft); cursor: pointer;
 }
@@ -188,7 +188,6 @@ body {
   transition: border-color .15s, color .15s, background .15s;
 }
 .set-add-toggle:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,111,90,.06); }
-.set-add-toggle span { font-size: 1rem; line-height: 1; }
 
 /* Save-set form — expanded state of the accordion */
 .set-save-row { display: flex; gap: 8px; animation: set-add-in .16s ease; }
@@ -203,7 +202,7 @@ body {
   box-shadow: 0 0 0 3px rgba(124,111,90,.14);
 }
 .set-add-cancel {
-  font: inherit; line-height: 1; font-size: 1rem;
+  display: inline-flex; align-items: center; justify-content: center;
   padding: 0 12px; border: 1px solid var(--line); border-radius: 9px;
   background: #fff; color: var(--ink-soft); cursor: pointer;
   transition: border-color .15s, color .15s;
@@ -362,6 +361,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 .actions { display: flex; gap: 10px; }
 
 .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   font: inherit; font-size: .9rem; font-weight: 500;
   padding: 10px 18px; border-radius: 10px; cursor: pointer;
   border: 1px solid var(--line); background: #fff; color: var(--ink);

@@ -67,3 +67,4 @@ npm run typecheck  # tsc --noEmit (strict mode, noUncheckedIndexedAccess)
 - Path alias `@/*` → `src/*`.
 - Comments explain *why*, not *what*. The engine is intentionally heavily commented — preserve that.
 - Keep components presentational; new interactive logic goes in the hook or a new hook, not in JSX files.
+- **Icons are `lucide-react` components, never literal glyph characters** (no `×`, `★`, `+`, etc. as button text). Import only the icons used; size via the `size` prop (14 for compact chip/form controls, 16 for `.btn` actions), and add `aria-hidden="true"` when the button already has an accessible label so the icon isn't announced twice.

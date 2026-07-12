@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus, Star, X } from "lucide-react";
 import { useState } from "react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
 import type { AspectId, FontFamily, TextAlign } from "@/types/deboss";
@@ -15,6 +16,9 @@ import {
 } from "@/lib/deboss/constants";
 import { detectTextDirection } from "@/lib/deboss/direction";
 import { ConfirmDialog } from "./ConfirmDialog";
+
+/** Icon size for the compact chip/form controls in the "My sets" section. */
+const CHIP_ICON_SIZE = 14;
 
 const ALIGNMENTS: { value: TextAlign; label: string }[] = [
   { value: "right", label: "Right" },
@@ -133,7 +137,10 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
                   }
                   onClick={() => toggleDefaultSet(set.id)}
                 >
-                  ★
+                  <Star
+                    size={CHIP_ICON_SIZE}
+                    fill={defaultSetId === set.id ? "currentColor" : "none"}
+                  />
                 </button>
                 <button
                   type="button"
@@ -141,7 +148,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
                   aria-label={`Delete set: ${set.name}`}
                   onClick={() => setPendingDeleteId(set.id)}
                 >
-                  ×
+                  <X size={CHIP_ICON_SIZE} />
                 </button>
               </div>
             ))}
@@ -180,7 +187,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
               aria-label="Cancel adding a set"
               onClick={() => setIsAddingSet(false)}
             >
-              ×
+              <X size={CHIP_ICON_SIZE} />
             </button>
           </form>
         ) : (
@@ -189,7 +196,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
             className="set-add-toggle"
             onClick={() => setIsAddingSet(true)}
           >
-            <span aria-hidden="true">+</span> Add set
+            <Plus size={CHIP_ICON_SIZE} aria-hidden="true" /> Add set
           </button>
         )}
       </section>

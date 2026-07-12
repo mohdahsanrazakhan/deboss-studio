@@ -60,7 +60,7 @@ src/
 
 ## Requirements
 
-Node.js ≥ 18.18. Fonts (Noto Nastaliq Urdu, Gulzar, Noto Naskh Arabic, Playfair Display, Noto Serif Devanagari, Inter) load from Google Fonts at runtime; the browser needs network access to fonts.googleapis.com and fonts.gstatic.com on first load.
+Node.js ≥ 18.18. Fonts (Noto Nastaliq Urdu, Gulzar, Noto Naskh Arabic, Playfair Display, Noto Serif Devanagari, Inter) load from Google Fonts at runtime; the browser needs network access to fonts.googleapis.com and fonts.gstatic.com on first load. UI icons are [`lucide-react`](https://lucide.dev) components — never literal glyph characters.
 
 ## License
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { Copy, Download } from "lucide-react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
 
 export function PreviewStage({ studio }: { studio: DebossStudio }) {
@@ -44,6 +45,7 @@ export function PreviewStage({ studio }: { studio: DebossStudio }) {
             className={`btn ghost${isCopying ? " is-busy" : ""}`}
             onClick={() => void copyImage()}
           >
+            <Copy size={16} aria-hidden="true" />
             Copy image
           </button>
           <button
@@ -51,6 +53,7 @@ export function PreviewStage({ studio }: { studio: DebossStudio }) {
             className="btn primary"
             onClick={() => void downloadPng()}
           >
+            <Download size={16} aria-hidden="true" />
             Download PNG
           </button>
         </div>
