@@ -122,6 +122,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
         title="Presets & Sets"
         openSection={openSection}
         onClose={closeSection}
+        previewState={state}
       >
       {/* Presets */}
       <section className="group">
@@ -266,6 +267,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
         title="Engraving"
         openSection={openSection}
         onClose={closeSection}
+        previewState={state}
       >
       {/* Sliders */}
       <section className="group">
@@ -297,6 +299,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
         title="Type & Paper"
         openSection={openSection}
         onClose={closeSection}
+        previewState={state}
       >
       {/* Type & paper */}
       <section className="group">

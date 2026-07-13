@@ -112,6 +112,7 @@ body {
 
 .section-modal-backdrop { display: none; border: 0; padding: 0; }
 .section-modal-header { display: none; }
+.mini-preview { display: none; }
 
 /* Textarea (auto RTL/LTR direction — see detectTextDirection) */
 #text-input {
@@ -433,7 +434,9 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 
   .section-modal-panel {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 41;
-    max-height: 82vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    /* Capped below 82vh (not just for looks) — leaves guaranteed room at the
+       top of the screen for .mini-preview to float above the sheet. */
+    max-height: 74vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
     background: var(--panel);
     border-radius: 22px 22px 0 0;
     padding: 8px 18px calc(18px + env(safe-area-inset-bottom, 0px));
@@ -462,11 +465,43 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   /* Inside a sheet each group is the whole show — no trailing divider. */
   .section-modal-panel .group:first-child { padding-top: 2px; }
   .section-modal-panel .group:last-child { border-bottom: 0; padding-bottom: 2px; }
+
+  /* Floating live swatch — sits in the guaranteed peek strip above the
+     sheet (see .section-modal-panel's max-height) so a change made inside
+     the sheet is visible without closing it. Above the backdrop/panel
+     (z-index 40/41) but below ConfirmDialog's .modal-overlay (z-index 50),
+     so a delete-confirm still layers on top of it correctly. */
+  .mini-preview {
+    display: block;
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%); /* base (post-animation) resting position */
+    z-index: 45;
+    padding: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    animation: mini-preview-in .22s ease;
+  }
+  .mini-preview canvas {
+    display: block;
+    width: 76px; height: 76px;
+    border-radius: 10px;
+    /* Shows through only if "Transparent background" is on, same trick as .stage-inner. */
+    background: repeating-conic-gradient(#eeeae1 0% 25%, #f7f4ee 0% 50%) 0 0 / 14px 14px;
+  }
 }
 
 @keyframes sheet-slide-up {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+
+@keyframes mini-preview-in {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 @media (max-width: 460px) {

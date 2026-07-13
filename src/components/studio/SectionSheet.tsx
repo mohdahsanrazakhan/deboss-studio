@@ -2,12 +2,16 @@
 
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import type { DebossState } from "@/types/deboss";
+import { MiniPreview } from "./MiniPreview";
 
 interface SectionSheetProps {
   id: string;
   title: string;
   openSection: string | null;
   onClose: () => void;
+  /** Live style, used only to render the floating MiniPreview while this sheet is open. */
+  previewState: DebossState;
   children: React.ReactNode;
 }
 
@@ -29,6 +33,7 @@ export function SectionSheet({
   title,
   openSection,
   onClose,
+  previewState,
   children,
 }: SectionSheetProps) {
   const isOpen = openSection === id;
@@ -58,6 +63,11 @@ export function SectionSheet({
         tabIndex={-1}
         onClick={onClose}
       />
+      {/* Sibling of .section-modal-panel, not nested inside it — the panel's
+          slide-up animation briefly applies a transform, which would hijack
+          this element's `position: fixed` containing block if it were a
+          descendant. */}
+      {isOpen && <MiniPreview state={previewState} />}
       <div
         className="section-modal-panel"
         role={isOpen ? "dialog" : undefined}
