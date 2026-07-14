@@ -10,7 +10,7 @@
  *  - Font readiness (canvas can't shape non-Latin scripts until faces load).
  *  - rAF-coalesced preview rendering (one paint per frame max).
  *  - ResizeObserver-driven re-layout (the preview width is fluid).
- *  - High-resolution PNG export: download + clipboard copy.
+ *  - High-resolution PNG export: download + clipboard copy + native share.
  *  - User-saved "sets" in localStorage, one of which can be starred as the
  *    default that auto-applies its style (not its text) on every future load.
  *
@@ -38,6 +38,7 @@ import {
   DEFAULT_HINT,
   DEFAULT_SET_STORAGE_KEY,
   DEFAULT_STATE,
+  EXPORT_FILENAME,
   EXPORT_SCALE,
   MAX_CUSTOM_SETS,
   MAX_PREVIEW_DPR,
@@ -66,6 +67,11 @@ export function useDebossStudio() {
   const [defaultSetId, setDefaultSetId] = useState<string | null>(null);
   const [hint, setHint] = useState<string>(DEFAULT_HINT);
   const [isCopying, setIsCopying] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  // Native share (Web Share API with files) is mobile-only in practice; feature-detect
+  // once on mount with a throwaway file so the button simply doesn't render where it
+  // can't work (desktop, unsupported browsers), rather than showing a dead end.
+  const [canShareImage, setCanShareImage] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -162,6 +168,18 @@ export function useDebossStudio() {
       ro.disconnect();
     };
   }, [scheduleRender]);
+
+  /* ------------------------------------------------------------------
+     Native-share capability check (once, on mount)
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    try {
+      const testFile = new File([], EXPORT_FILENAME, { type: "image/png" });
+      setCanShareImage(!!navigator.canShare?.({ files: [testFile] }));
+    } catch {
+      setCanShareImage(false);
+    }
+  }, []);
 
   /* ------------------------------------------------------------------
      Custom sets — load once on mount, persist on every change. Guarded
@@ -372,10 +390,10 @@ export function useDebossStudio() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "text-deboss.png";
+      a.download = EXPORT_FILENAME;
       a.click();
       URL.revokeObjectURL(url);
-      flashHint("Saved text-deboss.png");
+      flashHint(`Saved ${EXPORT_FILENAME}`);
     } catch {
       flashHint("Export failed — try again");
     }
@@ -401,6 +419,38 @@ export function useDebossStudio() {
     }
   }, [flashHint, measureLogicalWidth]);
 
+  /**
+   * Hands the exported PNG to the OS share sheet (Instagram, Messages,
+   * WhatsApp, etc. all appear there on supported mobile browsers — there is
+   * no API to publish into a specific app directly). `canShareImage` gates
+   * whether the button rendering this even exists; still guard here too in
+   * case support changes between mount and click.
+   */
+  const shareImage = useCallback(async () => {
+    setIsSharing(true);
+    try {
+      const out = buildExportCanvas(
+        stateRef.current,
+        measureLogicalWidth(),
+        EXPORT_SCALE,
+      );
+      const blob = await canvasToPngBlob(out);
+      const file = new File([blob], EXPORT_FILENAME, { type: "image/png" });
+      if (!navigator.canShare?.({ files: [file] })) {
+        flashHint("Sharing isn't supported here — try Download instead");
+        return;
+      }
+      await navigator.share({ files: [file] });
+    } catch (err) {
+      // The user closing the share sheet without picking an app also
+      // rejects with AbortError — that's a normal cancel, not a failure.
+      if (err instanceof Error && err.name === "AbortError") return;
+      flashHint("Share failed — try again");
+    } finally {
+      setIsSharing(false);
+    }
+  }, [flashHint, measureLogicalWidth]);
+
   return {
     state,
     activePreset,
@@ -411,6 +461,8 @@ export function useDebossStudio() {
     hint,
     hintFlash,
     isCopying,
+    isSharing,
+    canShareImage,
     canvasRef,
     stageRef,
     setText,
@@ -429,6 +481,7 @@ export function useDebossStudio() {
     toggleDefaultSet,
     downloadPng,
     copyImage,
+    shareImage,
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Download } from "lucide-react";
+import { Copy, Download, Share2 } from "lucide-react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
 
 export function PreviewStage({ studio }: { studio: DebossStudio }) {
@@ -11,9 +11,12 @@ export function PreviewStage({ studio }: { studio: DebossStudio }) {
     hint,
     hintFlash,
     isCopying,
+    isSharing,
+    canShareImage,
     setTransparent,
     downloadPng,
     copyImage,
+    shareImage,
   } = studio;
 
   return (
@@ -48,6 +51,17 @@ export function PreviewStage({ studio }: { studio: DebossStudio }) {
             <Copy size={16} aria-hidden="true" />
             Copy image
           </button>
+          {canShareImage && (
+            <button
+              type="button"
+              className={`btn ghost icon${isSharing ? " is-busy" : ""}`}
+              aria-label="Share image"
+              title="Share image"
+              onClick={() => void shareImage()}
+            >
+              <Share2 size={17} aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             className="btn primary"

@@ -22,7 +22,7 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 
 ## Presets
 
-- [x] Soft Deboss · Deep Deboss · Premium Letterpress · Luxury Paper
+- [x] Soft Deboss · Deep Deboss · Fine Letterpress · Luxury Paper
 - [x] A preset sets all five engraving params + paper tone, syncs sliders + swatch, and highlights its chip
 - [x] Any manual slider/swatch change clears the active chip
 
@@ -53,6 +53,7 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 
 - [x] Download PNG at 3× resolution, pixel-identical render path, filename `text-deboss.png`
 - [x] Copy image to clipboard (ClipboardItem) with busy state and graceful fallback message
+- [x] Native share (Web Share API `files`) hands the exported PNG to the OS share sheet — Instagram, WhatsApp, Messages, etc. appear there on supported mobile browsers. Feature-detected on mount; the button only renders where it can actually work (mostly desktop browsers lack it), so there's never a dead-end click
 - [x] Transparent background toggle (affects preview AND export)
 - [x] Hint line flashes status messages (saved / copied / not supported) and reverts after 2.6 s
 

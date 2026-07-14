@@ -388,6 +388,9 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 }
 .btn:active { transform: translateY(1px); }
 .btn.ghost:hover { border-color: var(--accent); }
+/* Compact square variant for a lone icon action (e.g. native-share) — sits
+   quietly alongside labelled buttons instead of competing for width. */
+.btn.icon { padding: 0; width: 40px; height: 40px; flex: none; }
 .btn.primary {
   background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
   box-shadow: var(--shadow-sm);
@@ -508,6 +511,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   .preset-row { grid-template-columns: 1fr; }
   .actions { width: 100%; }
   .actions .btn { flex: 1; }
+  .actions .btn.icon { flex: none; } /* stays a fixed square, doesn't stretch like the labelled buttons */
   .field-row { flex-direction: column; align-items: flex-start; }
   select#font, select#aspect { max-width: none; width: 100%; }
   .set-save-row { flex-wrap: wrap; }

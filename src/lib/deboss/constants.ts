@@ -33,6 +33,8 @@ export const DEFAULT_SET_STORAGE_KEY = "textDebossStudio.defaultSetId";
 export const MAX_SET_NAME_LENGTH = 40;
 /** Cap on saved custom sets — keeps the list usable and storage bounded. */
 export const MAX_CUSTOM_SETS = 24;
+/** Filename used for both the download and native-share export. */
+export const EXPORT_FILENAME = "text-deboss.png";
 
 export const DEFAULT_TEXT = "بسمِ اللہ\nالرحمٰن الرحیم";
 
@@ -119,7 +121,7 @@ export const PRESETS: Preset[] = [
   },
   {
     id: "letterpress",
-    label: "Premium Letterpress",
+    label: "Fine Letterpress",
     depth: 3.4,
     shadow: 0.62,
     highlight: 0.48,
@@ -140,7 +142,7 @@ export const PRESETS: Preset[] = [
 ];
 
 export const DEFAULT_HINT =
-  "Tip: presets adjust every slider at once — then fine-tune to taste.";
+  "Tip: presets adjust every slider at once, then fine-tune to taste.";
 
 /** Parse an "r,g,b" swatch key into a PaperColor, with a safe fallback. */
 export function parsePaperKey(key: string): { r: number; g: number; b: number } {
