@@ -25,6 +25,12 @@ import type { NextRequest } from "next/server";
  * script-src (that's the "Ignoring 'self'" console message: informational,
  * not an error).
  *
+ * `worker-src 'self'` is explicit (not left to fall back from script-src)
+ * for public/sw.js: worker-src falling back to script-src would inherit
+ * 'strict-dynamic', which makes browsers ignore 'self' for script loads,
+ * and navigator.serviceWorker.register() has no nonce to offer instead.
+ * An explicit worker-src isn't touched by script-src's 'strict-dynamic'.
+ *
  * This REPLACES the CSP that used to live in next.config.mjs; do not
  * reintroduce a static Content-Security-Policy header there, or the
  * response will carry two CSP headers and browsers enforce the
@@ -41,6 +47,7 @@ export function middleware(request: NextRequest) {
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' blob: data:",
     "connect-src 'self'",
+    "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -63,6 +70,6 @@ export const config = {
   matcher: [
     // Skip static assets and metadata files: they don't render HTML,
     // so there's no inline script to nonce and no benefit to the CSP header.
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|sitemap.xml|robots.txt|manifest.webmanifest).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|icon-192.png|icon-512.png|icon-maskable-512.png|apple-touch-icon.png|sw.js|sitemap.xml|robots.txt|manifest.webmanifest).*)",
   ],
 };

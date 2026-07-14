@@ -4,6 +4,8 @@ Press any text into premium textured paper. A canvas-based debossed / letterpres
 
 Type your text, tune the engraving (depth, shadow, highlight, edge blur, paper grain, font size), pick a font, alignment, and paper tone, or apply a one-click preset, then export a high-resolution PNG or copy it straight to the clipboard. The exported PNG is pixel-identical to the live preview because both go through the same render path. The default sample text is Urdu (`بسمِ اللہ`), reflecting the app's origin.
 
+It's also a fully installable, offline-capable PWA: add it to your home screen on mobile or desktop, and it keeps working with no connection once you've visited it online at least once (there's no backend or data fetching to lose anyway).
+
 ## Quick start
 
 ```bash
@@ -27,14 +29,15 @@ npm run dev                  # http://localhost:3000
 ```
 src/
 ├── app/                    # App Router: layout, page, SEO routes
-│   ├── layout.tsx          # Metadata, fonts, JSON-LD, viewport
+│   ├── layout.tsx          # Metadata, fonts, JSON-LD, viewport, appleWebApp
 │   ├── page.tsx            # Server-rendered shell
 │   ├── globals.css         # Design tokens + all UI styles
 │   ├── robots.ts           # /robots.txt
 │   ├── sitemap.ts          # /sitemap.xml
-│   └── manifest.ts         # /manifest.webmanifest (PWA)
+│   └── manifest.ts         # /manifest.webmanifest (PWA icons)
 ├── components/
 │   ├── layout/Header.tsx   # Server component
+│   ├── layout/ServiceWorkerRegister.tsx  # Registers public/sw.js (prod only)
 │   └── studio/             # Client components (the app itself)
 │       ├── Studio.tsx
 │       ├── ControlPanel.tsx
@@ -45,7 +48,10 @@ src/
 │   ├── engine.ts           # Framework-agnostic canvas rendering engine
 │   └── constants.ts        # Defaults, presets, slider defs, paper tones
 ├── config/site.ts          # Single source of truth for SEO metadata
+├── middleware.ts           # Per-request CSP nonce
 └── types/deboss.ts         # Domain types
+
+public/sw.js                # Hand-rolled offline service worker
 ```
 
 ## Documentation

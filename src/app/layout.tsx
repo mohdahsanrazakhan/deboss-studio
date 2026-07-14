@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -30,6 +31,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/icon.svg",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: siteConfig.shortName,
   },
   openGraph: {
     type: "website",
@@ -116,7 +123,10 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }

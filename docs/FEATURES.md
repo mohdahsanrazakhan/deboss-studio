@@ -71,4 +71,4 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 - [x] Strict TypeScript domain model (`types/deboss.ts`)
 - [x] Input length guard (2000 chars) as a client-DoS control
 - [x] ARIA: `aria-pressed` on toggles, `aria-live` hint, labelled groups, canvas `role="img"`
-- [x] Installable PWA manifest + SVG icon
+- [x] Full offline-capable PWA: manifest with SVG + PNG (192/512) + maskable + apple-touch icons, `appleWebApp` metadata for iOS, and a hand-rolled service worker (`public/sw.js`, no next-pwa/serwist dependency) that caches the app shell and static assets so the whole studio keeps working with no connection

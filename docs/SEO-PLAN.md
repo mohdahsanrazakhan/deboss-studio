@@ -21,7 +21,7 @@ Primary keyword themes (already wired into `src/config/site.ts`):
 | Robots meta                   | `metadata.robots`                        | index/follow, large image preview                            |
 | `robots.txt`                  | `app/robots.ts`                          | Allows all, points to sitemap                                |
 | `sitemap.xml`                 | `app/sitemap.ts`                         | Single URL today; extend as pages are added                  |
-| Web app manifest              | `app/manifest.ts`                        | Installable PWA metadata                                     |
+| Web app manifest + service worker | `app/manifest.ts`, `public/sw.js`    | Full offline-capable PWA: PNG/maskable/apple icons, `appleWebApp` metadata, hand-rolled offline caching (docs/SECURITY.md) |
 | JSON-LD structured data       | `app/layout.tsx`                         | `WebApplication` schema, price 0, `inLanguage: [en, ur, ar, hi]` |
 | Server-rendered shell         | `app/page.tsx`                           | H1, description, landmarks in HTML; crawlable without JS    |
 | Performance                   | static prerender, ~107 kB First Load JS, preconnect to font origins, `display=swap` | Core Web Vitals friendly |

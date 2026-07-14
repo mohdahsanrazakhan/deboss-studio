@@ -23,6 +23,7 @@ style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 font-src 'self' https://fonts.gstatic.com;
 img-src 'self' blob: data:;
 connect-src 'self';
+worker-src 'self';
 object-src 'none';
 base-uri 'self';
 form-action 'self';
@@ -38,9 +39,16 @@ Rationale:
 - **Don't apply the nonce to the JSON-LD script.** `layout.tsx` reads the nonce (required, see above) but must NOT put it on the JSON-LD `<script type="application/ld+json">` (developer-controlled constants only; no user input ever flows into it). That script doesn't need a nonce in the first place: browsers only enforce `script-src` against executable script MIME types, and `application/ld+json` is inert data that's never executed. Nonce'ing it anyway caused a hydration mismatch, since browsers hide a script's `nonce` attribute from the DOM right after insertion (so React's SSR-rendered value can never match what it reads back client-side). Keep that one script nonce-free while still calling `headers()`.
 - Google Fonts is the **only** external origin (styles + font binaries), required for multi-script shaping. Nothing else may be added without updating this document.
 - `blob:` in `img-src` supports the PNG download flow (`URL.createObjectURL`).
+- `worker-src 'self'` allows `public/sw.js` (the offline service worker) to register. It's explicit rather than left to fall back from `script-src`, since that fallback would inherit `'strict-dynamic'` (which makes browsers ignore `'self'` for script loads), and `navigator.serviceWorker.register()` has no nonce to offer instead.
 - `'unsafe-inline'` in `style-src` is required by Next.js critical-CSS injection; scripts remain locked down via the nonce, which is what matters for XSS.
 - Dev builds add `'unsafe-eval'` to `script-src` for Fast Refresh only, gated on `NODE_ENV !== 'production'`.
 - **Trade-off**: because `layout.tsx` must call `headers()`, the root route renders dynamically per request instead of being statically prerendered at build time. This is the accepted, necessary cost of a working nonce-based CSP; there's no expensive data fetching on this route, so the cost is negligible.
+
+### Service worker (public/sw.js)
+
+Hand-rolled, no `next-pwa`/`serwist` dependency. Registered only in production (`src/components/layout/ServiceWorkerRegister.tsx`), never in dev, since its cache-first strategy would otherwise serve stale JS chunks over Fast Refresh's freshly rebuilt ones.
+
+Threat model impact is minimal: it only caches GET responses (its own precached static assets, same-origin hashed chunks/icons, and cross-origin Google Fonts requests), never anything containing user input, and never intercepts non-GET requests. There's nothing to poison with attacker-controlled data since the app has no backend and no user-submitted content ever leaves the browser. The one thing to keep correct: `CACHE_VERSION` in `sw.js` must be bumped whenever the caching strategy changes, or returning visitors can get stuck on a stale cached shell (the `activate` handler only clears caches whose name doesn't match the current version).
 
 ### Other headers
 
@@ -63,7 +71,7 @@ Rationale:
 
 ## Operational guidance
 
-- Run `npm audit` in CI and keep Next.js/React patched; the framework is the largest dependency surface (there are only 3 runtime deps: next, react, react-dom).
+- Run `npm audit` in CI and keep Next.js/React patched; the framework is the largest dependency surface (there are only 4 runtime deps: next, react, react-dom, lucide-react).
 - If you add ANY external origin (fonts, analytics, CDN), update the CSP and this file in the same PR.
 - Serve over HTTPS only; HSTS preload assumes the apex domain is HTTPS-committed.
 - Consider adding a `security.txt` (`/.well-known/security.txt`) once there's a disclosure contact.
