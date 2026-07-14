@@ -1,8 +1,8 @@
 # Text Deboss Studio
 
-Press any text into premium textured paper. A canvas-based debossed / letterpress text generator built with Next.js 15, React 19, and TypeScript — works beautifully with Urdu, Arabic, Hindi, English, and more. Text direction (RTL/LTR) is detected automatically as you type.
+Press any text into premium textured paper. A canvas-based debossed / letterpress text generator built with Next.js 15, React 19, and TypeScript, working beautifully with Urdu, Arabic, Hindi, English, and more. Text direction (RTL/LTR) is detected automatically as you type.
 
-Type your text, tune the engraving (depth, shadow, highlight, edge blur, paper grain, font size), pick a font, alignment, and paper tone — or apply a one-click preset — then export a high-resolution PNG or copy it straight to the clipboard. The exported PNG is pixel-identical to the live preview because both go through the same render path. The default sample text is Urdu (`بسمِ اللہ`), reflecting the app's origin.
+Type your text, tune the engraving (depth, shadow, highlight, edge blur, paper grain, font size), pick a font, alignment, and paper tone, or apply a one-click preset, then export a high-resolution PNG or copy it straight to the clipboard. The exported PNG is pixel-identical to the live preview because both go through the same render path. The default sample text is Urdu (`بسمِ اللہ`), reflecting the app's origin.
 
 ## Quick start
 
@@ -50,17 +50,17 @@ src/
 
 ## Documentation
 
-- `CLAUDE.md` — orientation file for Claude Code (start here when using AI tooling)
-- `docs/ARCHITECTURE.md` — how the rendering engine and React layer fit together
-- `docs/FEATURES.md` — the complete feature inventory (parity checklist with the original app)
-- `docs/SECURITY.md` — threat model, CSP, and header policy
-- `docs/SEO-PLAN.md` — implemented SEO + roadmap
-- `docs/CONTRIBUTING.md` — conventions and workflow
-- `.claude/skills/text-deboss-engine/SKILL.md` — deep guide to the deboss engine for AI agents
+- `CLAUDE.md`: orientation file for Claude Code (start here when using AI tooling)
+- `docs/ARCHITECTURE.md`: how the rendering engine and React layer fit together
+- `docs/FEATURES.md`: the complete feature inventory (parity checklist with the original app)
+- `docs/SECURITY.md`: threat model, CSP, and header policy
+- `docs/SEO-PLAN.md`: implemented SEO + roadmap
+- `docs/CONTRIBUTING.md`: conventions and workflow
+- `.claude/skills/text-deboss-engine/SKILL.md`: deep guide to the deboss engine for AI agents
 
 ## Requirements
 
-Node.js ≥ 18.18. Fonts (Noto Nastaliq Urdu, Gulzar, Noto Naskh Arabic, Playfair Display, Noto Serif Devanagari, Inter) load from Google Fonts at runtime; the browser needs network access to fonts.googleapis.com and fonts.gstatic.com on first load. UI icons are [`lucide-react`](https://lucide.dev) components — never literal glyph characters.
+Node.js ≥ 18.18. Fonts (Noto Nastaliq Urdu, Gulzar, Noto Naskh Arabic, Playfair Display, Noto Serif Devanagari, Inter) load from Google Fonts at runtime; the browser needs network access to fonts.googleapis.com and fonts.gstatic.com on first load. UI icons are [`lucide-react`](https://lucide.dev) components, never literal glyph characters.
 
 ## License
 

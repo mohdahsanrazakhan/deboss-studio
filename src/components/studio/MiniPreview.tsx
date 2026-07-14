@@ -5,14 +5,14 @@ import type { DebossState, Layout } from "@/types/deboss";
 import { MAX_PREVIEW_DPR } from "@/lib/deboss/constants";
 import { drawScene } from "@/lib/deboss/engine";
 
-/** Logical CSS px — kept small and fixed so it always fits the peek area above a mobile sheet. */
+/** Logical CSS px: kept small and fixed so it always fits the peek area above a mobile sheet. */
 const MINI_SIZE = 76;
 
 /**
  * A small floating "swatch" of the current font/engraving/paper style,
  * shown above the mobile bottom sheets (see SectionSheet) so a change made
  * inside a sheet is visible without closing it. Deliberately simplified to
- * a single glyph — full word-wrap/aspect logic doesn't fit a box this
+ * a single glyph, since full word-wrap/aspect logic doesn't fit a box this
  * size. This is a supplementary coach-mark, not an alternate preview or
  * export path, so it's exempt from the preview/export parity rule
  * (CLAUDE.md #1): that rule is about PreviewStage vs. the exported PNG,

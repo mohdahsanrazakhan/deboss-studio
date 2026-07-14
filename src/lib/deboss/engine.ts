@@ -33,7 +33,7 @@ import {
 import { detectTextDirection } from "./direction";
 
 /* -------------------------------------------------------------------
-   Paper grain — generated once (lazily) as a repeatable noise tile.
+   Paper grain: generated once (lazily) as a repeatable noise tile.
    Lazy so this module can be imported during SSR without touching DOM.
    ------------------------------------------------------------------- */
 let _noiseTile: HTMLCanvasElement | null = null;
@@ -122,7 +122,7 @@ export function computeLayout(state: DebossState, logicalW: number): Layout {
 }
 
 /* -------------------------------------------------------------------
-   Glyph mask — the text drawn solid on a transparent canvas
+   Glyph mask: the text drawn solid on a transparent canvas
    ------------------------------------------------------------------- */
 function buildMask(
   state: DebossState,
@@ -193,7 +193,7 @@ function innerShadow(
 
   // 2. Erase using ONLY the glyph's shadow. The glyph image itself is
   //    drawn far off-canvas (at -push), so it never erases directly;
-  //    the shadow — offset back by +push plus the desired (offX,offY) —
+  //    the shadow, offset back by +push plus the desired (offX,offY),
   //    is the only thing that lands on the tile. What survives is a soft
   //    band of colour on the inner edge opposite the offset direction.
   const push = Math.max(w, h) + 200;
@@ -271,7 +271,7 @@ export function drawScene(
   if (!ctx) throw new Error("Canvas 2D context unavailable");
   ctx.clearRect(0, 0, pxW, pxH);
 
-  // (a) Paper — skipped when exporting transparency.
+  // (a) Paper: skipped when exporting transparency.
   if (!transparent) drawPaper(ctx, state, pxW, pxH);
 
   // Nothing to engrave? stop here.
@@ -283,7 +283,7 @@ export function drawScene(
   const blur = state.blur * s;
   const off = Math.max(state.depth * s, 0.01);
 
-  // (c) Recess floor — seat the letters a hair into the sheet.
+  // (c) Recess floor: seat the letters a hair into the sheet.
   //     A faint uniform darkening inside the glyph adds believable depth.
   const floor = document.createElement("canvas");
   floor.width = pxW;
@@ -299,7 +299,7 @@ export function drawScene(
     ctx.globalAlpha = 1;
   }
 
-  // (c.5) Optional colour tint — infuses the glyph with a chosen colour
+  // (c.5) Optional colour tint: infuses the glyph with a chosen colour
   //       while leaving it under the shadow/highlight so the engraving
   //       still reads as pressed into the paper, not printed on top.
   if (state.tintStrength > 0) {
@@ -334,7 +334,7 @@ export function drawScene(
 }
 
 /* -------------------------------------------------------------------
-   Font loading — canvas needs the face ready before it can shape it
+   Font loading: canvas needs the face ready before it can shape it
    ------------------------------------------------------------------- */
 export async function ensureFont(
   family: string,
@@ -348,7 +348,7 @@ export async function ensureFont(
 }
 
 /* -------------------------------------------------------------------
-   Export — high-resolution PNG built from the same render path
+   Export: high-resolution PNG built from the same render path
    ------------------------------------------------------------------- */
 export function buildExportCanvas(
   state: DebossState,

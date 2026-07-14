@@ -4,7 +4,7 @@
  * the Canvas 2D API. React never reaches into the engine's internals.
  */
 
-/** RGB paper colour, 0–255 per channel. */
+/** RGB paper colour, 0-255 per channel. */
 export interface PaperColor {
   r: number;
   g: number;
@@ -42,21 +42,21 @@ export interface DebossState {
   /** Export/preview with a transparent background instead of paper. */
   transparent: boolean;
   paper: PaperColor;
-  /** Stroke-wall offset, in CSS px (0–8). */
+  /** Stroke-wall offset, in CSS px (0-8). */
   depth: number;
-  /** Dark inner-shadow opacity (0–1). */
+  /** Dark inner-shadow opacity (0-1). */
   shadow: number;
-  /** Light inner-highlight opacity (0–1). */
+  /** Light inner-highlight opacity (0-1). */
   highlight: number;
-  /** Edge softness, in CSS px (0–12). */
+  /** Edge softness, in CSS px (0-12). */
   blur: number;
-  /** Paper grain intensity (0–1). */
+  /** Paper grain intensity (0-1). */
   texture: number;
-  /** CSS px (24–150). */
+  /** CSS px (24-150). */
   fontSize: number;
   /** Text tint colour. */
   tint: PaperColor;
-  /** 0 = natural paper-colour deboss, 1 = fully tinted (0–1). */
+  /** 0 = natural paper-colour deboss, 1 = fully tinted (0-1). */
   tintStrength: number;
   /** Dark inner-shadow colour. */
   shadowColor: PaperColor;
@@ -75,13 +75,13 @@ export interface Preset {
   highlight: number;
   blur: number;
   texture: number;
-  /** "r,g,b" — matches the swatch key format so the UI can sync. */
+  /** "r,g,b": matches the swatch key format so the UI can sync. */
   paper: string;
 }
 
 /**
- * A user-saved snapshot of the full look — font, layout, engraving, and
- * colours — everything in `DebossState` except the typed text. Distinct
+ * A user-saved snapshot of the full look (font, layout, engraving, and
+ * colours), everything in `DebossState` except the typed text. Distinct
  * from the built-in `Preset`s: these are created, named, and deleted by
  * the user, and persisted client-side (see `CUSTOM_SETS_STORAGE_KEY`).
  */

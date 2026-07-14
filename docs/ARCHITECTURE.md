@@ -6,11 +6,11 @@ Text Deboss Studio is a fully client-rendered canvas application wrapped in a se
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ middleware.ts — per-request CSP nonce         [edge]      │
+│ middleware.ts - per-request CSP nonce         [edge]      │
 ├──────────────────────────────────────────────────────────┤
 │ app/ (App Router)                                        │
-│   layout.tsx  — metadata, fonts, JSON-LD   [server, async]│
-│   page.tsx    — shell: Header + Studio     [server]      │
+│   layout.tsx  - metadata, fonts, JSON-LD   [server, async]│
+│   page.tsx    - shell: Header + Studio     [server]      │
 │   robots.ts / sitemap.ts / manifest.ts     [build-time]  │
 ├──────────────────────────────────────────────────────────┤
 │ components/studio/            [client, presentational]   │
@@ -35,12 +35,12 @@ Dependency direction is strictly downward. The engine never imports React; compo
 ## Rendering pipeline
 
 1. **State change** (slider, text, font, preset, swatch, transparency) → `setState` in the hook.
-2. An effect calls `scheduleRender()`, which cancels any pending frame and books a new `requestAnimationFrame` — so a burst of slider events costs exactly one paint.
-3. `renderPreview()` measures the stage's inner width, calls `computeLayout()` (direction-aware word wrap + height clamp — direction is auto-detected per `lib/deboss/direction.ts`), then `drawScene()` at `min(devicePixelRatio, 2)`.
+2. An effect calls `scheduleRender()`, which cancels any pending frame and books a new `requestAnimationFrame`, so a burst of slider events costs exactly one paint.
+3. `renderPreview()` measures the stage's inner width, calls `computeLayout()` (direction-aware word wrap + height clamp; direction is auto-detected per `lib/deboss/direction.ts`), then `drawScene()` at `min(devicePixelRatio, 2)`.
 4. `drawScene()` composites: paper (colour + cached noise tile + directional light gradient) → glyph mask → recess floor → dark inner shadow (top-left walls) → white inner highlight (bottom-right walls). See the engine skill file for the inner-shadow compositing trick.
 5. The canvas backing store is physical pixels; CSS `width/height` present it at logical size for crispness.
 
-**Export** reuses steps 3–4 with `EXPORT_SCALE = 3` on an offscreen canvas, then `toBlob('image/png')` → object-URL download or `ClipboardItem` copy. This guarantees the PNG is pixel-identical (×3) to the preview.
+**Export** reuses steps 3-4 with `EXPORT_SCALE = 3` on an offscreen canvas, then `toBlob('image/png')` → object-URL download or `ClipboardItem` copy. This guarantees the PNG is pixel-identical (×3) to the preview.
 
 ## Why fonts load via Google Fonts `<link>` instead of `next/font`
 
@@ -48,7 +48,7 @@ Dependency direction is strictly downward. The engine never imports React; compo
 
 ## Direction detection (RTL vs LTR)
 
-`lib/deboss/direction.ts` exports `detectTextDirection(text)`, a first-strong-character scan over `DebossState.text`. Both the engine (`ctx.direction` in `layoutLines`/`buildMask`) and the UI (`dir` on the textarea in `ControlPanel.tsx`) call it — there is no manual toggle and no hardcoded direction anywhere. This lets the same app render Urdu/Arabic (RTL) and Latin/Devanagari (LTR) text correctly, script-switching live as the user types.
+`lib/deboss/direction.ts` exports `detectTextDirection(text)`, a first-strong-character scan over `DebossState.text`. Both the engine (`ctx.direction` in `layoutLines`/`buildMask`) and the UI (`dir` on the textarea in `ControlPanel.tsx`) call it; there is no manual toggle and no hardcoded direction anywhere. This lets the same app render Urdu/Arabic (RTL) and Latin/Devanagari (LTR) text correctly, script-switching live as the user types.
 
 ## State model
 
@@ -58,19 +58,19 @@ Preset semantics: applying a preset overwrites the five engraving parameters + p
 
 ## Custom sets (client-side persistence)
 
-`CustomSet` (`types/deboss.ts`) is a user-named snapshot of `DebossState` minus `text` — font, alignment, aspect, engraving, paper, tint, shadow colour. Unlike `Preset`s (built-in, four fixed configurations, engraving+paper only), sets are created by the user and cover the *entire* look.
+`CustomSet` (`types/deboss.ts`) is a user-named snapshot of `DebossState` minus `text`: font, alignment, aspect, engraving, paper, tint, shadow colour. Unlike `Preset`s (built-in, four fixed configurations, engraving+paper only), sets are created by the user and cover the *entire* look.
 
-They're the app's only persisted data, stored as JSON in `localStorage` under `CUSTOM_SETS_STORAGE_KEY` — still no server, no cookies, no network write. `useDebossStudio.ts` loads them once on mount and re-persists on every change, guarded by a `customSetsLoadedRef` so the pre-load empty array can't clobber storage before the initial read resolves. Every `localStorage` call is wrapped in `try/catch` since it can throw (private browsing, quota, disabled storage) — a set then just lives for the current session instead of failing the app.
+They're the app's only persisted data, stored as JSON in `localStorage` under `CUSTOM_SETS_STORAGE_KEY`; still no server, no cookies, no network write. `useDebossStudio.ts` loads them once on mount and re-persists on every change, guarded by a `customSetsLoadedRef` so the pre-load empty array can't clobber storage before the initial read resolves. Every `localStorage` call is wrapped in `try/catch` since it can throw (private browsing, quota, disabled storage); a set then just lives for the current session instead of failing the app.
 
-**Default set**: one set's id can be stored separately under `DEFAULT_SET_STORAGE_KEY` (`defaultSetId` state, toggled via `toggleDefaultSet`). The load effect that reads `customSets` also looks up this id and, if it still matches a saved set, applies that set's `state` to `DebossState` *in the same effect* — not a later one — so the change lands before the font-loading promise resolves and the first real canvas paint happens (`renderPreview` is gated on `fontsReadyRef`, which is far slower than a synchronous `localStorage.getItem`). That ordering is what avoids a visible flash of the built-in default before the user's default appears. `deleteCustomSet` clears `defaultSetId` if the deleted set was the default.
+**Default set**: one set's id can be stored separately under `DEFAULT_SET_STORAGE_KEY` (`defaultSetId` state, toggled via `toggleDefaultSet`). The load effect that reads `customSets` also looks up this id and, if it still matches a saved set, applies that set's `state` to `DebossState` *in the same effect*, not a later one, so the change lands before the font-loading promise resolves and the first real canvas paint happens (`renderPreview` is gated on `fontsReadyRef`, which is far slower than a synchronous `localStorage.getItem`). That ordering is what avoids a visible flash of the built-in default before the user's default appears. `deleteCustomSet` clears `defaultSetId` if the deleted set was the default.
 
 ## Server vs client boundary
 
-`page.tsx` and `Header` are server components — the header, landmarks, and metadata are in the HTML for crawlers. `Studio` is the single `"use client"` island; hydration cost is limited to it (First Load JS ≈ 107 kB total).
+`page.tsx` and `Header` are server components; the header, landmarks, and metadata are in the HTML for crawlers. `Studio` is the single `"use client"` island; hydration cost is limited to it (First Load JS ≈ 107 kB total).
 
 ## CSP nonce + why the root route isn't static
 
-`middleware.ts` runs on every request, generates a random nonce, and sets it as both the `x-nonce` request header and the response's `Content-Security-Policy` header (see `docs/SECURITY.md` for the full rationale — Next's App Router needs a nonced/trusted `script-src` for its own scripts, and a static `script-src 'self'` blocks them entirely in production). `layout.tsx` calls `headers()` — reading a Dynamic API is what makes Next render this route per-request rather than serving a cached static shell, which is the only way its renderer can see this request's nonce and stamp it onto the scripts it manages. Skip that call and every script gets blocked (we hit this once already). The nonce value itself is **not** applied to the one inline script the app authors (the JSON-LD block): it's `type="application/ld+json"`, which browsers never enforce `script-src` against (inert data, not executed), and nonce'ing it caused a hydration mismatch (browsers strip a script's `nonce` attribute from the DOM right after insertion). Net effect: `layout.tsx` is `async` and the root route renders dynamically (`ƒ` in the build output) instead of being statically prerendered — an accepted, required trade-off; there's no expensive data fetching on this route, so the cost is negligible.
+`middleware.ts` runs on every request, generates a random nonce, and sets it as both the `x-nonce` request header and the response's `Content-Security-Policy` header (see `docs/SECURITY.md` for the full rationale: Next's App Router needs a nonced/trusted `script-src` for its own scripts, and a static `script-src 'self'` blocks them entirely in production). `layout.tsx` calls `headers()`; reading a Dynamic API is what makes Next render this route per-request rather than serving a cached static shell, which is the only way its renderer can see this request's nonce and stamp it onto the scripts it manages. Skip that call and every script gets blocked (we hit this once already). The nonce value itself is **not** applied to the one inline script the app authors (the JSON-LD block): it's `type="application/ld+json"`, which browsers never enforce `script-src` against (inert data, not executed), and nonce'ing it caused a hydration mismatch (browsers strip a script's `nonce` attribute from the DOM right after insertion). Net effect: `layout.tsx` is `async` and the root route renders dynamically (`ƒ` in the build output) instead of being statically prerendered; an accepted, required trade-off, and there's no expensive data fetching on this route, so the cost is negligible.
 
 ## Build & quality gates
 

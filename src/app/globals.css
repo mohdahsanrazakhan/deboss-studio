@@ -1,5 +1,5 @@
 /* =====================================================================
-   Text Deboss Studio — global styles (ported 1:1 from the original app)
+   Text Deboss Studio: global styles (ported 1:1 from the original app)
    The preview canvas is the hero; all surrounding chrome stays quiet
    and neutral so it never competes with the paper artwork.
    ===================================================================== */
@@ -90,7 +90,7 @@ body {
 
 .group { padding: 16px 0; border-bottom: 1px solid var(--line); }
 /* Groups are wrapped in a .section-modal for the mobile bottom-sheet menu
-   (see below) — target the truly-last group by chaining through the
+   (see below): target the truly-last group by chaining through the
    wrapper, since plain `.group:last-child` would now also match the last
    group INSIDE each earlier wrapper (e.g. "My sets", "Engraving"). */
 .section-modal:last-child .group:last-child { border-bottom: 0; }
@@ -114,7 +114,7 @@ body {
 .section-modal-header { display: none; }
 .mini-preview { display: none; }
 
-/* Textarea (auto RTL/LTR direction — see detectTextDirection) */
+/* Textarea (auto RTL/LTR direction: see detectTextDirection) */
 #text-input {
   width: 100%;
   min-height: 92px;
@@ -198,7 +198,7 @@ body {
 
 .set-empty { margin: 0 0 12px; font-size: .82rem; color: var(--ink-soft); }
 
-/* "+ Add set" toggle — collapsed state of the accordion */
+/* "+ Add set" toggle: collapsed state of the accordion */
 .set-add-toggle {
   display: inline-flex; align-items: center; gap: 6px;
   font: inherit; font-size: .82rem; font-weight: 500;
@@ -208,7 +208,7 @@ body {
 }
 .set-add-toggle:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,111,90,.06); }
 
-/* Save-set form — expanded state of the accordion */
+/* Save-set form: expanded state of the accordion */
 .set-save-row { display: flex; gap: 8px; animation: set-add-in .16s ease; }
 .set-save-row input {
   flex: 1; min-width: 0; font: inherit; font-size: .85rem;
@@ -388,7 +388,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 }
 .btn:active { transform: translateY(1px); }
 .btn.ghost:hover { border-color: var(--accent); }
-/* Compact square variant for a lone icon action (e.g. native-share) — sits
+/* Compact square variant for a lone icon action (e.g. native-share): sits
    quietly alongside labelled buttons instead of competing for width. */
 .btn.icon { padding: 0; width: 40px; height: 40px; flex: none; }
 .btn.primary {
@@ -437,7 +437,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 
   .section-modal-panel {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 41;
-    /* Capped below 82vh (not just for looks) — leaves guaranteed room at the
+    /* Capped below 82vh (not just for looks): leaves guaranteed room at the
        top of the screen for .mini-preview to float above the sheet. */
     max-height: 74vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
     background: var(--panel);
@@ -465,11 +465,11 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   }
   .section-modal-close:hover { border-color: var(--accent); color: var(--ink); }
 
-  /* Inside a sheet each group is the whole show — no trailing divider. */
+  /* Inside a sheet each group is the whole show, so no trailing divider. */
   .section-modal-panel .group:first-child { padding-top: 2px; }
   .section-modal-panel .group:last-child { border-bottom: 0; padding-bottom: 2px; }
 
-  /* Floating live swatch — sits in the guaranteed peek strip above the
+  /* Floating live swatch: sits in the guaranteed peek strip above the
      sheet (see .section-modal-panel's max-height) so a change made inside
      the sheet is visible without closing it. Above the backdrop/panel
      (z-index 40/41) but below ConfirmDialog's .modal-overlay (z-index 50),

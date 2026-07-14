@@ -127,7 +127,7 @@ export function useDebossStudio() {
   }, [state, scheduleRender]);
 
   /* ------------------------------------------------------------------
-     Font loading — first paint waits for all three faces
+     Font loading: first paint waits for all three faces
      ------------------------------------------------------------------ */
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +152,7 @@ export function useDebossStudio() {
   }, [scheduleRender]);
 
   /* ------------------------------------------------------------------
-     Fluid width — ResizeObserver on the stage (debounced)
+     Fluid width: ResizeObserver on the stage (debounced)
      ------------------------------------------------------------------ */
   useEffect(() => {
     const stage = stageRef.current;
@@ -182,12 +182,12 @@ export function useDebossStudio() {
   }, []);
 
   /* ------------------------------------------------------------------
-     Custom sets — load once on mount, persist on every change. Guarded
+     Custom sets: load once on mount, persist on every change. Guarded
      with a "loaded" flag so the pre-load empty array never overwrites
      whatever is already in storage.
 
      The default set (if any) is applied to `state` in this SAME effect,
-     synchronously with the load — not in a later render — so the very
+     synchronously with the load, not in a later render, so the very
      first canvas paint (gated on fonts being ready, which takes far
      longer than this localStorage read) already reflects it. No flash
      of the built-in default before the user's default set appears.
@@ -207,7 +207,7 @@ export function useDebossStudio() {
         setState((s) => ({ ...s, ...defaultSet.state }));
       }
     } catch {
-      /* storage unavailable or corrupt — start with an empty list, no default */
+      /* storage unavailable or corrupt: start with an empty list, no default */
     } finally {
       customSetsLoadedRef.current = true;
     }
@@ -221,7 +221,7 @@ export function useDebossStudio() {
         JSON.stringify(customSets),
       );
     } catch {
-      /* storage full/unavailable — sets stay in memory for this session */
+      /* storage full/unavailable: sets stay in memory for this session */
     }
   }, [customSets]);
 
@@ -234,7 +234,7 @@ export function useDebossStudio() {
         window.localStorage.removeItem(DEFAULT_SET_STORAGE_KEY);
       }
     } catch {
-      /* storage full/unavailable — default choice stays in memory for this session */
+      /* storage full/unavailable: default choice stays in memory for this session */
     }
   }, [defaultSetId]);
 
@@ -308,7 +308,7 @@ export function useDebossStudio() {
     }));
   }, []);
 
-  /** "r,g,b" key of the current paper — used to highlight the swatch. */
+  /** "r,g,b" key of the current paper, used to highlight the swatch. */
   const paperKey = useMemo(
     () => `${state.paper.r},${state.paper.g},${state.paper.b}`,
     [state.paper],
@@ -329,7 +329,7 @@ export function useDebossStudio() {
   }, []);
 
   /* ------------------------------------------------------------------
-     Custom set actions — save/apply/delete a user-named full snapshot
+     Custom set actions: save/apply/delete a user-named full snapshot
      (everything but the typed text). Kept separate from applyPreset:
      a Set restores font/align/aspect/tint too, a Preset never does.
      ------------------------------------------------------------------ */
@@ -338,7 +338,7 @@ export function useDebossStudio() {
     const trimmed = name.trim().slice(0, MAX_SET_NAME_LENGTH);
     if (!trimmed) return false;
     if (customSetsRef.current.length >= MAX_CUSTOM_SETS) {
-      flashHint(`Set limit reached (${MAX_CUSTOM_SETS}) — delete one first`);
+      flashHint(`Set limit reached (${MAX_CUSTOM_SETS}), delete one first`);
       return false;
     }
     const newSet: CustomSet = {
@@ -377,7 +377,7 @@ export function useDebossStudio() {
   }, []);
 
   /* ------------------------------------------------------------------
-     Export actions — same render path as the preview, at 3× resolution
+     Export actions: same render path as the preview, at 3× resolution
      ------------------------------------------------------------------ */
   const downloadPng = useCallback(async () => {
     try {
@@ -395,7 +395,7 @@ export function useDebossStudio() {
       URL.revokeObjectURL(url);
       flashHint(`Saved ${EXPORT_FILENAME}`);
     } catch {
-      flashHint("Export failed — try again");
+      flashHint("Export failed, try again");
     }
   }, [flashHint, measureLogicalWidth]);
 
@@ -413,7 +413,7 @@ export function useDebossStudio() {
       ]);
       flashHint("Image copied to clipboard");
     } catch {
-      flashHint("Copy not supported here — use Download instead");
+      flashHint("Copy not supported here, use Download instead");
     } finally {
       setIsCopying(false);
     }
@@ -421,7 +421,7 @@ export function useDebossStudio() {
 
   /**
    * Hands the exported PNG to the OS share sheet (Instagram, Messages,
-   * WhatsApp, etc. all appear there on supported mobile browsers — there is
+   * WhatsApp, etc. all appear there on supported mobile browsers; there is
    * no API to publish into a specific app directly). `canShareImage` gates
    * whether the button rendering this even exists; still guard here too in
    * case support changes between mount and click.
@@ -437,15 +437,15 @@ export function useDebossStudio() {
       const blob = await canvasToPngBlob(out);
       const file = new File([blob], EXPORT_FILENAME, { type: "image/png" });
       if (!navigator.canShare?.({ files: [file] })) {
-        flashHint("Sharing isn't supported here — try Download instead");
+        flashHint("Sharing isn't supported here, try Download instead");
         return;
       }
       await navigator.share({ files: [file] });
     } catch (err) {
       // The user closing the share sheet without picking an app also
-      // rejects with AbortError — that's a normal cancel, not a failure.
+      // rejects with AbortError; that's a normal cancel, not a failure.
       if (err instanceof Error && err.name === "AbortError") return;
-      flashHint("Share failed — try again");
+      flashHint("Share failed, try again");
     } finally {
       setIsSharing(false);
     }

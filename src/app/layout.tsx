@@ -10,7 +10,7 @@ import "./globals.css";
  * "Noto Serif Devanagari") for correct shaping via document.fonts.load(),
  * across RTL (Urdu/Arabic) and LTR (Latin/Devanagari) scripts alike. The
  * CSP (src/middleware.ts) allowlists exactly fonts.googleapis.com (styles)
- * and fonts.gstatic.com (font binaries) — nothing else.
+ * and fonts.gstatic.com (font binaries), nothing else.
  */
 const GOOGLE_FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=Gulzar&family=Noto+Naskh+Arabic:wght@400..700&family=Noto+Nastaliq+Urdu:wght@400..700&family=Playfair+Display:wght@400..700&family=Noto+Serif+Devanagari:wght@400..700&family=Inter:wght@400;500;600&display=swap";
@@ -18,7 +18,7 @@ const GOOGLE_FONTS_HREF =
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: `${siteConfig.name} — Debossed Text Generator`,
+    default: `${siteConfig.name}: Debossed Text Generator`,
     template: `%s · ${siteConfig.name}`,
   },
   description: siteConfig.description,
@@ -35,13 +35,13 @@ export const metadata: Metadata = {
     type: "website",
     url: siteConfig.url,
     siteName: siteConfig.name,
-    title: `${siteConfig.name} — Debossed Text Generator`,
+    title: `${siteConfig.name}: Debossed Text Generator`,
     description: siteConfig.description,
     locale: siteConfig.locale,
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.name} — Debossed Text Generator`,
+    title: `${siteConfig.name}: Debossed Text Generator`,
     description: siteConfig.description,
   },
   robots: {
@@ -63,7 +63,7 @@ export const viewport: Viewport = {
   themeColor: "#e9e6df",
 };
 
-/** JSON-LD structured data — WebApplication schema for rich results. */
+/** JSON-LD structured data: WebApplication schema for rich results. */
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -89,7 +89,7 @@ export default async function RootLayout({
   // per-request instead of statically, which is the only way it can pick
   // up src/middleware.ts's fresh-per-request nonce and stamp it onto the
   // scripts it renders. Skip this call and every script gets blocked in
-  // production — Next has no per-request nonce to apply, and a
+  // production: Next has no per-request nonce to apply, and a
   // build-time-static shell can never match middleware's ever-changing
   // nonce anyway. Do not remove it, and do not apply the value to the
   // JSON-LD <script> below (see that comment for why).
@@ -107,10 +107,10 @@ export default async function RootLayout({
         <link href={GOOGLE_FONTS_HREF} rel="stylesheet" />
         <script
           type="application/ld+json"
-          // Static, developer-controlled JSON — no user input flows here.
+          // Static, developer-controlled JSON: no user input flows here.
           // No CSP nonce needed: browsers don't enforce script-src against
           // non-JS script types like application/ld+json (it's inert data,
-          // never executed) — adding one caused a hydration mismatch,
+          // never executed); adding one caused a hydration mismatch,
           // since browsers hide a script's nonce attribute from the DOM
           // right after insertion.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

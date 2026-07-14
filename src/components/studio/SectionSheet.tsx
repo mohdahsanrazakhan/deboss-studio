@@ -21,11 +21,11 @@ interface SectionSheetProps {
  * plain passthrough div and `children` render inline as always; on narrow
  * screens it becomes a bottom sheet, hidden until `openSection === id`.
  *
- * No JS viewport detection is needed — the visual mode is 100% CSS-driven
+ * No JS viewport detection is needed: the visual mode is 100% CSS-driven
  * off the `is-open` class. The only things that ever set `openSection` are
  * the mobile-menu buttons in ControlPanel, which are themselves CSS-hidden
  * on wide screens, so `isOpen` can only become true from a mobile context
- * in the first place — that's what makes it safe to key `role`/`aria-modal`
+ * in the first place, and that's what makes it safe to key `role`/`aria-modal`
  * off `isOpen` alone below, with no separate "is this mobile" check.
  */
 export function SectionSheet({
@@ -63,7 +63,7 @@ export function SectionSheet({
         tabIndex={-1}
         onClick={onClose}
       />
-      {/* Sibling of .section-modal-panel, not nested inside it — the panel's
+      {/* Sibling of .section-modal-panel, not nested inside it: the panel's
           slide-up animation briefly applies a transform, which would hijack
           this element's `position: fixed` containing block if it were a
           descendant. */}

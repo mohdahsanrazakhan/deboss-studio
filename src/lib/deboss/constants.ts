@@ -14,7 +14,7 @@ export const EXPORT_SCALE = 3;
 export const PAD_X = 56;
 /** Logical vertical padding (CSS px). */
 export const PAD_Y = 52;
-/** Generous line spacing — tall scripts like Nastaliq need the room, and it reads comfortably for other scripts too. */
+/** Generous line spacing: tall scripts like Nastaliq need the room, and it reads comfortably for other scripts too. */
 export const LINE_FACTOR = 1.9;
 /** Cap preview backing-store DPR so huge canvases stay cheap. */
 export const MAX_PREVIEW_DPR = 2;
@@ -23,7 +23,7 @@ export const MIN_LOGICAL_H = 300;
 export const MAX_LOGICAL_H = 1100;
 /** Minimum logical preview width. */
 export const MIN_LOGICAL_W = 240;
-/** Hard cap on input length — a canvas-render DoS guard, generous for real use. */
+/** Hard cap on input length: a canvas-render DoS guard, generous for real use. */
 export const MAX_TEXT_LENGTH = 2000;
 /** localStorage key for user-saved custom sets (see CustomSet in types/deboss.ts). */
 export const CUSTOM_SETS_STORAGE_KEY = "textDebossStudio.customSets";
@@ -31,7 +31,7 @@ export const CUSTOM_SETS_STORAGE_KEY = "textDebossStudio.customSets";
 export const DEFAULT_SET_STORAGE_KEY = "textDebossStudio.defaultSetId";
 /** Max length for a custom set's name. */
 export const MAX_SET_NAME_LENGTH = 40;
-/** Cap on saved custom sets — keeps the list usable and storage bounded. */
+/** Cap on saved custom sets: keeps the list usable and storage bounded. */
 export const MAX_CUSTOM_SETS = 24;
 /** Filename used for both the download and native-share export. */
 export const EXPORT_FILENAME = "text-deboss.png";

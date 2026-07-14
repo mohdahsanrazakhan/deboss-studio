@@ -4,7 +4,7 @@
 
 1. Branch from `main` (`feat/…`, `fix/…`, `docs/…`).
 2. Make the change; keep the engine (`src/lib/deboss/`) React-free and the components presentational.
-3. Run the full gate locally — a PR is ready only when all pass:
+3. Run the full gate locally; a PR is ready only when all pass:
 
 ```bash
 npm run lint
@@ -25,7 +25,7 @@ Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `perf:`, `chore:`. 
 - Named exports everywhere except Next.js route files.
 - `@/` path alias for all internal imports.
 - CSS lives in `globals.css` with the `:root` token block; don't introduce CSS-in-JS or Tailwind piecemeal.
-- Comments explain intent, not mechanics — especially in the engine.
+- Comments explain intent, not mechanics; especially in the engine.
 
 ## Non-negotiables (see CLAUDE.md for the full list)
 

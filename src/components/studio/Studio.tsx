@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Studio — the interactive application shell.
+ * Studio: the interactive application shell.
  * Composes the control panel (left) and the live preview stage (right).
  * All state lives in useDebossStudio; children are presentational.
  */

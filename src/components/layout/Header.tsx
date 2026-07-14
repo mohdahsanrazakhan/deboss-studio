@@ -1,5 +1,5 @@
 /**
- * Site header — server component (no interactivity).
+ * Site header: server component (no interactivity).
  */
 export function Header() {
   return (

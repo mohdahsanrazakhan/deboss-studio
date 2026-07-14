@@ -2,7 +2,7 @@
   "name": "text-deboss-studio",
   "version": "1.0.0",
   "private": true,
-  "description": "Press any text into premium textured paper — a canvas-based debossed/letterpress text generator.",
+  "description": "Press any text into premium textured paper: a canvas-based debossed/letterpress text generator.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -1,12 +1,12 @@
 /**
- * Next.js configuration — Text Deboss Studio
+ * Next.js configuration: Text Deboss Studio
  *
  * Security posture (see docs/SECURITY.md):
- *  - Content-Security-Policy is NOT set here — it lives in `src/middleware.ts`
+ *  - Content-Security-Policy is NOT set here; it lives in `src/middleware.ts`
  *    because it needs a fresh nonce per request (Next.js App Router requires
  *    inline <script> tags for RSC streaming/hydration; a static
  *    `script-src 'self'` blocks them all in production and renders a blank
- *    page). Do not add a Content-Security-Policy header to this file — a
+ *    page). Do not add a Content-Security-Policy header to this file: a
  *    second CSP header would combine with middleware's via intersection and
  *    reintroduce that bug.
  *  - The other headers below don't need per-request values, so they stay

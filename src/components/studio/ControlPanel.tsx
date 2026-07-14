@@ -18,7 +18,7 @@ import { detectTextDirection } from "@/lib/deboss/direction";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SectionSheet } from "./SectionSheet";
 
-/** Icon sizes for the "My sets" chips — star sits inline, delete is a small floating badge. */
+/** Icon sizes for the "My sets" chips: star sits inline, delete is a small floating badge. */
 const CHIP_STAR_ICON_SIZE = 15;
 const CHIP_DELETE_ICON_SIZE = 12;
 /** Icon size for the add-set form's own controls (cancel × and the "+" toggle). */
@@ -27,7 +27,7 @@ const CHIP_ICON_SIZE = 14;
 /**
  * On narrow screens (see max-width:880px in globals.css), Presets/Sets,
  * Engraving, and Type & paper collapse into bottom sheets reached through
- * this menu — see SectionSheet for how the same markup serves both roles.
+ * this menu: see SectionSheet for how the same markup serves both roles.
  */
 const MOBILE_MENU: { id: string; label: string; Icon: typeof Layers }[] = [
   { id: "presets", label: "Presets & Sets", Icon: Layers },
@@ -78,7 +78,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     customSets.find((s) => s.id === pendingDeleteId) ?? null;
 
   // UI-only: which section is open as a mobile bottom sheet (see SectionSheet).
-  // Irrelevant on wide screens — the mobile-menu buttons that set it are
+  // Irrelevant on wide screens: the mobile-menu buttons that set it are
   // CSS-hidden there, so this never leaves `null` outside a mobile context.
   const [openSection, setOpenSection] = useState<string | null>(null);
   const closeSection = () => setOpenSection(null);
@@ -101,7 +101,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
         />
       </section>
 
-      {/* Mobile-only menu — opens the sections below as bottom sheets. Hidden
+      {/* Mobile-only menu: opens the sections below as bottom sheets. Hidden
           on wide screens, where those sections already render inline. */}
       <nav className="mobile-menu" aria-label="Style menu">
         {MOBILE_MENU.map(({ id, label, Icon }) => (
@@ -144,7 +144,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
         </div>
       </section>
 
-      {/* Custom sets — user-saved full configurations, kept separate from Presets */}
+      {/* Custom sets: user-saved full configurations, kept separate from Presets */}
       <section className="group">
         <span className="group-label" id="sets-label">
           My sets
@@ -168,7 +168,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
                   }
                   title={
                     defaultSetId === set.id
-                      ? "Default on load — click to unset"
+                      ? "Default on load, click to unset"
                       : "Set as default on load"
                   }
                   onClick={() => toggleDefaultSet(set.id)}

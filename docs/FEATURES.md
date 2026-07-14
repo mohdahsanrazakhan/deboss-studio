@@ -6,18 +6,18 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 
 - [x] Script-agnostic textarea with automatic RTL/LTR direction detection (`detectTextDirection`) and a Urdu default text (بسمِ اللہ / الرحمٰن الرحیم)
 - [x] Hard line breaks honoured; automatic direction-aware word wrap to canvas width
-- [x] Five fonts: Noto Nastaliq Urdu (default), Gulzar, Noto Naskh Arabic, Playfair Display, Noto Serif Devanagari — loaded and awaited before first canvas paint
-- [x] Font size slider (24–150 px)
+- [x] Five fonts: Noto Nastaliq Urdu (default), Gulzar, Noto Naskh Arabic, Playfair Display, Noto Serif Devanagari; loaded and awaited before first canvas paint
+- [x] Font size slider (24-150 px)
 - [x] Alignment: right / center (default) / left segmented control
 - [x] Generous line spacing (LINE_FACTOR 1.9), tuned for Nastaliq's steep descenders but comfortable for other scripts too
 
 ## Engraving controls (sliders with live numeric readouts)
 
-- [x] Depth (0–8, step 0.1)
-- [x] Shadow strength (0–1, step 0.01)
-- [x] Highlight strength (0–1, step 0.01)
-- [x] Edge blur (0–12, step 0.1)
-- [x] Paper texture (0–1, step 0.01)
+- [x] Depth (0-8, step 0.1)
+- [x] Shadow strength (0-1, step 0.01)
+- [x] Highlight strength (0-1, step 0.01)
+- [x] Edge blur (0-12, step 0.1)
+- [x] Paper texture (0-1, step 0.01)
 - [x] Value formatting identical to original (`3.0`, `0.55`, integer font size)
 
 ## Presets
@@ -28,10 +28,10 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 
 ## My sets (user-saved, distinct from Presets)
 
-- [x] Save the *entire* current look — font, alignment, aspect, engraving params, paper, tint, tint strength, shadow colour — under a name, excluding the typed text
+- [x] Save the *entire* current look (font, alignment, aspect, engraving params, paper, tint, tint strength, shadow colour) under a name, excluding the typed text
 - [x] Persisted client-side in `localStorage` (`CUSTOM_SETS_STORAGE_KEY`); survives reloads, never sent to a server
 - [x] Apply a saved set with one click; delete (with confirm dialog) via the × on its chip
-- [x] Star one set as the **default on load** (★ on its chip) — its style (not its text) auto-applies on every future visit, before the first canvas paint so there's no flash of the built-in look; persisted separately (`DEFAULT_SET_STORAGE_KEY`); deleting the default set clears the default too
+- [x] Star one set as the **default on load** (★ on its chip): its style (not its text) auto-applies on every future visit, before the first canvas paint so there's no flash of the built-in look; persisted separately (`DEFAULT_SET_STORAGE_KEY`); deleting the default set clears the default too
 - [x] Any manual tweak (slider, font, align, paper, tint, aspect, transparency) clears the active set chip, same as Presets
 - [x] Capped at `MAX_CUSTOM_SETS` (24) with a hint when the limit is hit; name capped at `MAX_SET_NAME_LENGTH` (40 chars)
 
@@ -53,7 +53,7 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 
 - [x] Download PNG at 3× resolution, pixel-identical render path, filename `text-deboss.png`
 - [x] Copy image to clipboard (ClipboardItem) with busy state and graceful fallback message
-- [x] Native share (Web Share API `files`) hands the exported PNG to the OS share sheet — Instagram, WhatsApp, Messages, etc. appear there on supported mobile browsers. Feature-detected on mount; the button only renders where it can actually work (mostly desktop browsers lack it), so there's never a dead-end click
+- [x] Native share (Web Share API `files`) hands the exported PNG to the OS share sheet: Instagram, WhatsApp, Messages, etc. appear there on supported mobile browsers. Feature-detected on mount; the button only renders where it can actually work (mostly desktop browsers lack it), so there's never a dead-end click
 - [x] Transparent background toggle (affects preview AND export)
 - [x] Hint line flashes status messages (saved / copied / not supported) and reverts after 2.6 s
 
