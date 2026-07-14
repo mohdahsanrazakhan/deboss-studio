@@ -46,10 +46,12 @@ export function PreviewStage({ studio }: { studio: DebossStudio }) {
           <button
             type="button"
             className={`btn ghost${isCopying ? " is-busy" : ""}`}
+            aria-label="Copy image"
+            title="Copy image"
             onClick={() => void copyImage()}
           >
             <Copy size={16} aria-hidden="true" />
-            Copy image
+            <span className="btn-label">Copy image</span>
           </button>
           {canShareImage && (
             <button
@@ -65,10 +67,12 @@ export function PreviewStage({ studio }: { studio: DebossStudio }) {
           <button
             type="button"
             className="btn primary"
+            aria-label="Download PNG"
+            title="Download PNG"
             onClick={() => void downloadPng()}
           >
             <Download size={16} aria-hidden="true" />
-            Download PNG
+            <span className="btn-label">Download PNG</span>
           </button>
         </div>
       </div>

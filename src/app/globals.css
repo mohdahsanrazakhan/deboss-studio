@@ -518,6 +518,18 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   .set-save-row input { flex-basis: 100%; }
 }
 
+/* Very narrow phones: labels hide (icon-only), but all three buttons keep
+   stretching to fill the row in equal thirds (flex: 1, inherited from the
+   460px block above) instead of shrinking to their content, so the row
+   still spans the full width instead of clumping to the left. Labels stay
+   in the DOM (aria-label/title cover the accessible name) so this is
+   purely a CSS-driven visual change. */
+@media (max-width: 450px) {
+  .actions .btn-label { display: none; }
+  .actions .btn { height: 40px; }
+  .actions .btn.icon { flex: 1; width: auto; }
+}
+
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
