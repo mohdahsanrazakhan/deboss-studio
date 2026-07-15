@@ -56,6 +56,8 @@ Dependency direction is strictly downward. The engine never imports React; compo
 
 Preset semantics: applying a preset overwrites the five engraving parameters + paper tone and marks the preset chip active; any manual slider/swatch change clears the active chip (the values remain).
 
+**Deep links**: `page.tsx` awaits `searchParams`, validates a `?preset=<id>` value against `PRESETS`, and passes the result down as `Studio`'s `initialPresetId` prop; `useDebossStudio.ts` applies it in a mount effect declared after the custom-sets/default-set load effect, so a shared link wins over a starred default. `page.tsx` also exports a `generateMetadata` that returns a per-preset title/description/canonical for that same value. Picking a preset client-side afterward calls `router.replace` to keep the URL in sync (`setPresetInUrl`); the same mutators that already clear `activePreset` (slider, paper swatch, applying a Set) also strip the query param (`clearPresetFromUrl`).
+
 ## Custom sets (client-side persistence)
 
 `CustomSet` (`types/deboss.ts`) is a user-named snapshot of `DebossState` minus `text`: font, alignment, aspect, engraving, paper, tint, shadow colour. Unlike `Preset`s (built-in, four fixed configurations, engraving+paper only), sets are created by the user and cover the *entire* look.

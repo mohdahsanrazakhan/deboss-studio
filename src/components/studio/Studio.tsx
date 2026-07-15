@@ -7,11 +7,17 @@
  */
 
 import { useDebossStudio } from "@/hooks/useDebossStudio";
+import type { PresetId } from "@/types/deboss";
 import { ControlPanel } from "./ControlPanel";
 import { PreviewStage } from "./PreviewStage";
 
-export function Studio() {
-  const studio = useDebossStudio();
+type StudioProps = {
+  /** A validated `?preset=` id resolved server-side (app/page.tsx), or null when absent. */
+  initialPresetId?: PresetId | null;
+};
+
+export function Studio({ initialPresetId = null }: StudioProps) {
+  const studio = useDebossStudio(initialPresetId);
 
   return (
     <main className="layout">

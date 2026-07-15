@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import type {
   AspectId,
   CustomSet,
@@ -59,7 +60,8 @@ import {
   ensureFont,
 } from "@/lib/deboss/engine";
 
-export function useDebossStudio() {
+export function useDebossStudio(initialPresetId: PresetId | null = null) {
+  const router = useRouter();
   const [state, setState] = useState<DebossState>(DEFAULT_STATE);
   const [activePreset, setActivePreset] = useState<PresetId | null>(null);
   const [customSets, setCustomSets] = useState<CustomSet[]>([]);
@@ -213,6 +215,34 @@ export function useDebossStudio() {
     }
   }, []);
 
+  /* ------------------------------------------------------------------
+     Preset deep link: a validated `?preset=` query value resolved
+     server-side (app/page.tsx) applies on first paint. Declared AFTER
+     the custom-sets/default-set load effect above so its state update
+     commits second in the same effect flush: a shared/linked preset
+     URL takes priority over a starred default set, never the other
+     way round. Runs once for the value present at mount; changing the
+     preset afterwards goes through applyPreset, which updates the URL
+     itself via setPresetInUrl.
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!initialPresetId) return;
+    const p = PRESETS.find((x) => x.id === initialPresetId);
+    if (!p) return;
+    setActivePreset(p.id);
+    setActiveCustomSet(null);
+    setState((s) => ({
+      ...s,
+      depth: p.depth,
+      shadow: p.shadow,
+      highlight: p.highlight,
+      blur: p.blur,
+      texture: p.texture,
+      paper: parsePaperKey(p.paper),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!customSetsLoadedRef.current) return;
     try {
@@ -246,11 +276,29 @@ export function useDebossStudio() {
     setState((s) => ({ ...s, text: text.slice(0, MAX_TEXT_LENGTH) }));
   }, []);
 
+  /* ------------------------------------------------------------------
+     Preset URL sync: reflects the active preset in `?preset=`, or
+     strips it, so a deep link stays shareable and matches what's on
+     screen. Wired into exactly the mutators that already clear
+     activePreset today (setSlider, setPaper, applyCustomSet); the ones
+     that only clear activeCustomSet (setAlign, setFont, etc.) leave a
+     preset's URL alone too, matching that existing precedent.
+     ------------------------------------------------------------------ */
+  const setPresetInUrl = useCallback((id: PresetId) => {
+    router.replace(`${window.location.pathname}?preset=${id}`, { scroll: false });
+  }, [router]);
+
+  const clearPresetFromUrl = useCallback(() => {
+    if (!window.location.search) return;
+    router.replace(window.location.pathname, { scroll: false });
+  }, [router]);
+
   const setSlider = useCallback((id: SliderId, value: number) => {
     setActivePreset(null); // manual tweak deactivates the preset/set chip
     setActiveCustomSet(null);
+    clearPresetFromUrl();
     setState((s) => ({ ...s, [id]: value }));
-  }, []);
+  }, [clearPresetFromUrl]);
 
   const setAlign = useCallback((align: TextAlign) => {
     setActiveCustomSet(null);
@@ -269,8 +317,9 @@ export function useDebossStudio() {
   const setPaper = useCallback((key: string) => {
     setActivePreset(null);
     setActiveCustomSet(null);
+    clearPresetFromUrl();
     setState((s) => ({ ...s, paper: parsePaperKey(key) }));
-  }, []);
+  }, [clearPresetFromUrl]);
 
   const setTransparent = useCallback((transparent: boolean) => {
     setActiveCustomSet(null);
@@ -306,7 +355,8 @@ export function useDebossStudio() {
       texture: p.texture,
       paper: parsePaperKey(p.paper),
     }));
-  }, []);
+    setPresetInUrl(id);
+  }, [setPresetInUrl]);
 
   /** "r,g,b" key of the current paper, used to highlight the swatch. */
   const paperKey = useMemo(
@@ -359,11 +409,12 @@ export function useDebossStudio() {
     if (!set) return;
     setActivePreset(null);
     setActiveCustomSet(id);
+    clearPresetFromUrl();
     setState((s) => ({ ...s, ...set.state }));
     await ensureFont(set.state.font, set.state.fontSize);
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(renderPreview);
-  }, [renderPreview]);
+  }, [renderPreview, clearPresetFromUrl]);
 
   const deleteCustomSet = useCallback((id: string) => {
     setCustomSets((sets) => sets.filter((x) => x.id !== id));

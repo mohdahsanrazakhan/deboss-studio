@@ -25,6 +25,7 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 - [x] Soft Deboss · Deep Deboss · Fine Letterpress · Luxury Paper
 - [x] A preset sets all five engraving params + paper tone, syncs sliders + swatch, and highlights its chip
 - [x] Any manual slider/swatch change clears the active chip
+- [x] Deep links: `?preset=<id>` applies a preset before first paint and gets its own title/description/canonical; picking a preset updates the URL, a manual tweak strips it, listed in `sitemap.xml` (docs/SEO-PLAN.md)
 
 ## My sets (user-saved, distinct from Presets)
 
