@@ -401,10 +401,62 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 .hint { margin: 12px 2px 0; font-size: .82rem; color: var(--ink-soft); }
 .hint.flash { color: var(--accent); font-weight: 500; }
 
+/* ------------------------------- FAQ -------------------------------- */
+.faq {
+  margin-top: 56px;
+  padding-top: 40px;
+  border-top: 1px solid var(--line);
+}
+.faq h2 {
+  margin: 0 0 24px;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--ink);
+}
+
+.faq-intro { margin-bottom: 48px; }
+
+.how-it-works {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.how-it-works li { display: flex; flex-direction: column; gap: 10px; }
+.how-it-works-index {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(145deg, #f6f4ef, #dfdacd);
+  box-shadow: inset 1px 1px 2px rgba(120,110,90,.35), inset -1px -1px 2px rgba(255,255,255,.9);
+  color: var(--ink-soft); font-size: .8rem; font-weight: 700;
+}
+.how-it-works h3 { margin: 4px 0 4px; font-size: .95rem; font-weight: 600; color: var(--ink); }
+.how-it-works p { margin: 0; font-size: .85rem; color: var(--ink-soft); line-height: 1.55; }
+
+.faq-list { display: flex; flex-direction: column; gap: 10px; }
+.faq-item {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel);
+  padding: 4px 18px;
+}
+.faq-item summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 0;
+  font-size: .95rem; font-weight: 500; color: var(--ink);
+  cursor: pointer; list-style: none;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-chevron { flex: none; color: var(--ink-soft); transition: transform .18s ease; }
+.faq-item[open] .faq-chevron { transform: rotate(180deg); }
+.faq-item p { margin: 0 0 18px; font-size: .88rem; color: var(--ink-soft); line-height: 1.6; }
+
 /* ----------------------------- Responsive ------------------------- */
 @media (max-width: 880px) {
   .layout { grid-template-columns: 1fr; }
   .panel { position: static; }
+  .how-it-works { grid-template-columns: repeat(2, 1fr); }
 
   /* Text stays inline; Presets/Sets, Engraving, and Type & paper move into
      bottom sheets reached from this menu, so the preview sits right below
@@ -508,6 +560,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 }
 
 @media (max-width: 460px) {
+  .how-it-works { grid-template-columns: 1fr; }
   .preset-row { grid-template-columns: 1fr; }
   .actions { width: 100%; }
   .actions .btn { flex: 1; }

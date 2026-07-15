@@ -67,7 +67,8 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 ## Additions over the original (Next.js port)
 
 - [x] Strict security headers incl. CSP (docs/SECURITY.md)
-- [x] Full SEO surface: metadata, canonical, OG/Twitter, robots.txt, sitemap.xml, manifest, JSON-LD (docs/SEO-PLAN.md)
+- [x] Full SEO surface: metadata, canonical, OG/Twitter (backed by a generated `opengraph-image.tsx`), robots.txt, sitemap.xml, manifest, JSON-LD (docs/SEO-PLAN.md)
+- [x] On-page "How it works" + FAQ section with `FAQPage` JSON-LD (`components/layout/FAQ.tsx`), native `<details>`/`<summary>` disclosure with no added client JS
 - [x] Strict TypeScript domain model (`types/deboss.ts`)
 - [x] Input length guard (2000 chars) as a client-DoS control
 - [x] ARIA: `aria-pressed` on toggles, `aria-live` hint, labelled groups, canvas `role="img"`

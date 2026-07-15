@@ -17,22 +17,24 @@ Primary keyword themes (already wired into `src/config/site.ts`):
 | Title + template              | `app/layout.tsx` `metadata.title`        | Brand + primary keyword in default title                     |
 | Meta description              | `config/site.ts`                         | Benefit-led, < 160 chars of core message                     |
 | Canonical URL                 | `metadata.alternates.canonical` + `metadataBase` | Driven by `NEXT_PUBLIC_SITE_URL`                     |
-| Open Graph + Twitter cards    | `app/layout.tsx`                         | `summary_large_image`; add a real OG image (phase 2)         |
+| Open Graph + Twitter cards    | `app/layout.tsx`                         | `summary_large_image`, backed by the generated OG image below |
+| OG image                      | `app/opengraph-image.tsx`                | Generated (Next's `ImageResponse`/Satori, not a static file) at 1200×630; auto-wires both `og:image` and `twitter:image`; dual text-shadow approximates the real deboss look |
 | Robots meta                   | `metadata.robots`                        | index/follow, large image preview                            |
 | `robots.txt`                  | `app/robots.ts`                          | Allows all, points to sitemap                                |
 | `sitemap.xml`                 | `app/sitemap.ts`                         | Single URL today; extend as pages are added                  |
 | Web app manifest + service worker | `app/manifest.ts`, `public/sw.js`    | Full offline-capable PWA: PNG/maskable/apple icons, `appleWebApp` metadata, hand-rolled offline caching (docs/SECURITY.md) |
-| JSON-LD structured data       | `app/layout.tsx`                         | `WebApplication` schema, price 0, `inLanguage: [en, ur, ar, hi]` |
-| Server-rendered shell         | `app/page.tsx`                           | H1, description, landmarks in HTML; crawlable without JS    |
-| Performance                   | static prerender, ~107 kB First Load JS, preconnect to font origins, `display=swap` | Core Web Vitals friendly |
+| JSON-LD structured data       | `app/layout.tsx`, `components/layout/FAQ.tsx` | `WebApplication` schema (price 0, `inLanguage: [en, ur, ar, hi]`) plus a separate `FAQPage` schema for the on-page FAQ |
+| On-page copy                  | `components/layout/FAQ.tsx`              | "How it works" (4 steps) + 6-question FAQ, rendered below the studio in `app/page.tsx`; native `<details>`/`<summary>`, zero added client JS |
+| Server-rendered shell         | `app/page.tsx`                           | H1, description, landmarks, FAQ in HTML; crawlable without JS |
+| Performance                   | `/` renders dynamically per request (required for the CSP nonce, see `docs/SECURITY.md`), ~107 kB First Load JS, preconnect to font origins, `display=swap` | Core Web Vitals friendly; no expensive data fetching on the dynamic route, so the cost is negligible |
 | Accessibility (SEO-adjacent)  | labels, aria-pressed, aria-live hint, reduced-motion CSS | Quality signal + usability            |
 
-## Phase 2: content & rich results (next)
+## Phase 2: content & rich results
 
-1. **OG image**: add a designed 1200×630 `opengraph-image.png` (or an `opengraph-image.tsx` ImageResponse) showing a real debossed sample; dramatically improves social CTR.
-2. **On-page copy**: add a short, crawlable "How it works" + FAQ section below the studio (what is debossing, how to export transparent PNGs, which fonts are included). Mark up the FAQ with `FAQPage` JSON-LD.
-3. **Localized landing pages**: `/ur` and similar routes with translated UI copy, `hreflang` alternates, and `lang`/`dir` set per locale (the app already auto-detects RTL/LTR per input, so this is UI-copy translation, not an engine change), high-leverage for the Urdu/Arabic audience specifically.
-4. **Preset deep links**: encode state in the URL query (`?preset=letterpress`) so preset pages can be linked, shared, and listed in the sitemap.
+1. ~~**OG image**~~: done, see `app/opengraph-image.tsx` in the table above.
+2. ~~**On-page copy**~~: done, see `components/layout/FAQ.tsx` in the table above.
+3. **Localized landing pages** (not started): `/ur` and similar routes with translated UI copy, `hreflang` alternates, and `lang`/`dir` set per locale (the app already auto-detects RTL/LTR per input, so this is UI-copy translation, not an engine change), high-leverage for the Urdu/Arabic audience specifically. Needs a native speaker to review the translated copy before it ships.
+4. **Preset deep links** (not started): encode state in the URL query (`?preset=letterpress`) so preset pages can be linked, shared, and listed in the sitemap.
 
 ## Phase 3: growth
 
