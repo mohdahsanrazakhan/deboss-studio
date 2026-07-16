@@ -62,7 +62,7 @@ body {
     inset -1.5px -1.5px 2px rgba(255,255,255,.95);
 }
 
-.brand-text h1 {
+.brand-title {
   margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em;
 }
 .brand-text p {
@@ -381,7 +381,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  font: inherit; font-size: .9rem; font-weight: 500;
+  font: inherit; font-size: .9rem; font-weight: 500; text-decoration: none;
   padding: 10px 18px; border-radius: 10px; cursor: pointer;
   border: 1px solid var(--line); background: #fff; color: var(--ink);
   transition: transform .08s, box-shadow .15s, background .15s, opacity .15s;
@@ -452,11 +452,245 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 .faq-item[open] .faq-chevron { transform: rotate(180deg); }
 .faq-item p { margin: 0 0 18px; font-size: .88rem; color: var(--ink-soft); line-height: 1.6; }
 
+/* ----------------------------- Gallery ------------------------------ */
+.gallery-index { position: relative; overflow: hidden; }
+
+.gallery-heading {
+  position: relative;
+  margin: 0 0 14px;
+  font-family: var(--font-ui);
+  font-size: clamp(2.2rem, 4vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+.gallery-intro {
+  position: relative;
+  margin: 0 0 28px;
+  max-width: 620px;
+  color: var(--ink-soft);
+  font-size: .95rem;
+  line-height: 1.6;
+}
+
+.gallery-toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.gallery-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.gallery-chip {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: .82rem;
+  font-weight: 500;
+}
+.gallery-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.gallery-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: .82rem;
+  font-weight: 500;
+}
+
+.gallery-grid {
+  position: relative;
+  column-count: 1;
+  column-gap: 20px;
+}
+@media (min-width: 620px)  { .gallery-grid { column-count: 2; } }
+@media (min-width: 980px)  { .gallery-grid { column-count: 3; } }
+@media (min-width: 1240px) { .gallery-grid { column-count: 4; } }
+
+.gallery-card {
+  display: block;
+  break-inside: avoid;
+  margin: 0 0 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: border-color .15s, box-shadow .15s, transform .08s;
+}
+.gallery-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+.gallery-card:active { transform: translateY(1px); }
+
+.gallery-card-media {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin: 6px 6px 0px 6px;
+  border-radius: 9px;
+}
+.gallery-card-canvas {
+  display: flex;
+  width: 100%;
+}
+.gallery-card-media canvas {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+}
+.gallery-card-open {
+  position: absolute; top: 12px; right: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,.85);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.gallery-card-body { padding: 16px 18px 20px; }
+.gallery-card-body h2, .gallery-card-body h3 { margin: 0 0 6px; font-size: 1rem; font-weight: 600; color: var(--ink); }
+.gallery-card-body p {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gallery-preview {
+  display: flex; align-items: center; justify-content: center;
+  background:
+    repeating-conic-gradient(#eeeae1 0% 25%, #f7f4ee 0% 50%) 0 0 / 22px 22px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: clamp(12px, 3vw, 28px);
+  overflow: hidden;
+}
+.gallery-preview canvas {
+  display: block;
+  max-width: 100%;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(40,35,25,.14);
+}
+
+.gallery-back { margin: 0 0 18px; font-size: .88rem; }
+.gallery-back a { color: var(--ink-soft); }
+
+/* -------------------------- Gallery detail page --------------------- */
+.gallery-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 36px;
+  align-items: start;
+  margin-bottom: 48px;
+}
+.gallery-detail-media {
+  position: sticky;
+  top: 16px;
+}
+.gallery-detail-media .gallery-preview { margin: 0; }
+
+.gallery-detail-info h1 {
+  margin: 0 0 12px;
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--ink);
+}
+.gallery-tags {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  list-style: none; margin: 0 0 16px; padding: 0;
+}
+.gallery-tag {
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: .78rem;
+  font-weight: 500;
+}
+.gallery-detail-blurb {
+  margin: 0 0 22px;
+  color: var(--ink-soft);
+  font-size: .95rem;
+  line-height: 1.6;
+}
+.gallery-cta { margin-bottom: 28px; }
+
+.gallery-specs {
+  display: flex; flex-direction: column; gap: 12px;
+  margin: 0; padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.gallery-specs > div { display: flex; justify-content: space-between; gap: 12px; }
+.gallery-specs dt { margin: 0; font-size: .82rem; color: var(--ink-soft); }
+.gallery-specs dd { margin: 0; font-size: .86rem; font-weight: 600; color: var(--ink); text-align: right; }
+
+.gallery-content {
+  max-width: 720px;
+  margin: 0 0 56px;
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.gallery-content h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.gallery-content p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: .92rem;
+  line-height: 1.7;
+}
+
+.gallery-related {
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
+}
+.gallery-related h2 {
+  margin: 0 0 20px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
 /* ----------------------------- Responsive ------------------------- */
 @media (max-width: 880px) {
   .layout { grid-template-columns: 1fr; }
   .panel { position: static; }
   .how-it-works { grid-template-columns: repeat(2, 1fr); }
+  .gallery-detail-layout { grid-template-columns: 1fr; gap: 28px; }
+  .gallery-detail-media { position: static; }
 
   /* Text stays inline; Presets/Sets, Engraving, and Type & paper move into
      bottom sheets reached from this menu, so the preview sits right below

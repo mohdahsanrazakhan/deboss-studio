@@ -92,6 +92,29 @@ export interface CustomSet {
   state: Omit<DebossState, "text">;
 }
 
+/**
+ * A curated, bespoke gallery look: the full render state, including its own
+ * specific text. Unlike `CustomSet`, which deliberately excludes text so a
+ * user's saved style survives retyping, a `GalleryExample` exists to pin one
+ * exact text as part of its identity.
+ */
+/** One named body section of a GalleryExample's on-page SEO content. */
+export interface GalleryExampleSection {
+  heading: string;
+  body: string;
+}
+
+export interface GalleryExample {
+  slug: string;
+  title: string;
+  blurb: string;
+  /** Decorative topic tags shown as chips on the example page (not wired to real filtering). */
+  tags: string[];
+  /** On-page long-form content, rendered as h2/p pairs below the hero. */
+  sections: GalleryExampleSection[];
+  state: DebossState;
+}
+
 export interface PaperTone {
   /** "r,g,b" key used to match a preset's paper value. */
   key: string;

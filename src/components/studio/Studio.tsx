@@ -14,10 +14,15 @@ import { PreviewStage } from "./PreviewStage";
 type StudioProps = {
   /** A validated `?preset=` id resolved server-side (app/page.tsx), or null when absent. */
   initialPresetId?: PresetId | null;
+  /** A validated `?example=` slug resolved server-side (app/page.tsx), or null when absent. */
+  initialExampleSlug?: string | null;
 };
 
-export function Studio({ initialPresetId = null }: StudioProps) {
-  const studio = useDebossStudio(initialPresetId);
+export function Studio({
+  initialPresetId = null,
+  initialExampleSlug = null,
+}: StudioProps) {
+  const studio = useDebossStudio(initialPresetId, initialExampleSlug);
 
   return (
     <main className="layout">

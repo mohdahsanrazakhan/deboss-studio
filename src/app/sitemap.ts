@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { PRESETS } from "@/lib/deboss/constants";
+import { GALLERY_EXAMPLES, PRESETS } from "@/lib/deboss/constants";
 import { siteConfig } from "@/config/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -10,6 +10,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
+  const galleryEntries: MetadataRoute.Sitemap = GALLERY_EXAMPLES.map((example) => ({
+    url: new URL(`/gallery/${example.slug}`, siteConfig.url).toString(),
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
   return [
     {
       url: siteConfig.url,
@@ -18,5 +25,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     ...presetEntries,
+    {
+      url: new URL("/gallery", siteConfig.url).toString(),
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    ...galleryEntries,
   ];
 }

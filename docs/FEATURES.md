@@ -74,3 +74,9 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 - [x] Input length guard (2000 chars) as a client-DoS control
 - [x] ARIA: `aria-pressed` on toggles, `aria-live` hint, labelled groups, canvas `role="img"`
 - [x] Full offline-capable PWA: manifest with SVG + PNG (192/512) + maskable + apple-touch icons, `appleWebApp` metadata for iOS, and a hand-rolled service worker (`public/sw.js`, no next-pwa/serwist dependency) that caches the app shell and static assets so the whole studio keeps working with no connection
+- [x] Preset deep links: `?preset=<id>` applies a built-in preset before first paint and gets its own per-preset title/description, listed in `sitemap.xml`; picking a preset updates the URL, a manual tweak strips it (`docs/SEO-PLAN.md` Phase 2)
+- [x] Gallery/examples pages (SEO Phase 3): `/gallery` (index) and `/gallery/<slug>` (one per curated `GalleryExample`), each with a real engine-rendered hero (`components/studio/GalleryPreview.tsx`), unique title/description/canonical, a per-example OG image, and a "Try this look" link into the studio via `?example=<slug>` (a bespoke full look, font/paper/engraving/tint/align/aspect/text included, not just the 5 fields a preset covers). Listed in `sitemap.xml`. See `docs/SEO-PLAN.md`, Phase 3.
+
+## Planned (not yet implemented)
+
+- [ ] Localized landing pages (SEO Phase 2 #3): `/ur` and similar routes with translated UI copy, deferred pending native-speaker review. See `docs/SEO-PLAN.md`, Phase 2.

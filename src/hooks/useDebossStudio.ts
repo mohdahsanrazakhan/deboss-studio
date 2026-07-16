@@ -41,6 +41,7 @@ import {
   DEFAULT_STATE,
   EXPORT_FILENAME,
   EXPORT_SCALE,
+  GALLERY_EXAMPLES,
   MAX_CUSTOM_SETS,
   MAX_PREVIEW_DPR,
   MAX_SET_NAME_LENGTH,
@@ -60,12 +61,16 @@ import {
   ensureFont,
 } from "@/lib/deboss/engine";
 
-export function useDebossStudio(initialPresetId: PresetId | null = null) {
+export function useDebossStudio(
+  initialPresetId: PresetId | null = null,
+  initialExampleSlug: string | null = null,
+) {
   const router = useRouter();
   const [state, setState] = useState<DebossState>(DEFAULT_STATE);
   const [activePreset, setActivePreset] = useState<PresetId | null>(null);
   const [customSets, setCustomSets] = useState<CustomSet[]>([]);
   const [activeCustomSet, setActiveCustomSet] = useState<string | null>(null);
+  const [activeExample, setActiveExample] = useState<string | null>(null);
   const [defaultSetId, setDefaultSetId] = useState<string | null>(null);
   const [hint, setHint] = useState<string>(DEFAULT_HINT);
   const [isCopying, setIsCopying] = useState(false);
@@ -86,6 +91,10 @@ export function useDebossStudio(initialPresetId: PresetId | null = null) {
   const customSetsRef = useRef(customSets);
   customSetsRef.current = customSets;
   const customSetsLoadedRef = useRef(false);
+
+  // Latest active-example id, read by setText without adding it as a dependency.
+  const activeExampleRef = useRef(activeExample);
+  activeExampleRef.current = activeExample;
 
   const fontsReadyRef = useRef(false);
   const rafRef = useRef<number | null>(null);
@@ -243,6 +252,28 @@ export function useDebossStudio(initialPresetId: PresetId | null = null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* ------------------------------------------------------------------
+     Gallery example deep link: a validated `?example=` query value
+     resolved server-side (app/page.tsx/gallery pages) applies on first
+     paint. Declared AFTER the preset-apply effect above, so if a URL
+     somehow carries both `?preset=` and `?example=`, the example's
+     full-state overwrite (including text) commits last and wins, the
+     same "declared later wins" mechanism that already lets a preset
+     beat a starred default set. A GalleryExample is a bespoke full
+     look (font, paper, engraving, tint, align, aspect, AND text), so
+     unlike a preset it fully replaces `state`, not a partial merge.
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!initialExampleSlug) return;
+    const example = GALLERY_EXAMPLES.find((e) => e.slug === initialExampleSlug);
+    if (!example) return;
+    setActiveExample(example.slug);
+    setActivePreset(null);
+    setActiveCustomSet(null);
+    setState(example.state);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!customSetsLoadedRef.current) return;
     try {
@@ -271,81 +302,122 @@ export function useDebossStudio(initialPresetId: PresetId | null = null) {
   /* ------------------------------------------------------------------
      State mutators
      ------------------------------------------------------------------ */
-  const setText = useCallback((text: string) => {
-    // Length guard: prevents pathological inputs from freezing the canvas.
-    setState((s) => ({ ...s, text: text.slice(0, MAX_TEXT_LENGTH) }));
-  }, []);
 
   /* ------------------------------------------------------------------
-     Preset URL sync: reflects the active preset in `?preset=`, or
-     strips it, so a deep link stays shareable and matches what's on
-     screen. Wired into exactly the mutators that already clear
-     activePreset today (setSlider, setPaper, applyCustomSet); the ones
-     that only clear activeCustomSet (setAlign, setFont, etc.) leave a
-     preset's URL alone too, matching that existing precedent.
+     Deep-link URL sync: reflects the active preset in `?preset=`, or
+     the active gallery example in `?example=`, so a shared link stays
+     accurate to what's on screen.
+
+     `clearDeepLinkFromUrl` wipes the whole query string: used by
+     mutators that invalidate BOTH a preset and an example alike
+     (setSlider, setPaper, applyCustomSet, applyPreset's own state
+     change before it sets its own param).
+
+     `clearExampleFromUrl` removes only `?example=`, leaving `?preset=`
+     untouched: used by mutators that invalidate a gallery example
+     (which pins font/align/aspect/tint/transparency/text too) but do
+     NOT invalidate a preset (which only cares about the 5 engraving
+     numbers + paper, per the existing, unchanged precedent).
      ------------------------------------------------------------------ */
   const setPresetInUrl = useCallback((id: PresetId) => {
     router.replace(`${window.location.pathname}?preset=${id}`, { scroll: false });
   }, [router]);
 
-  const clearPresetFromUrl = useCallback(() => {
+  const clearDeepLinkFromUrl = useCallback(() => {
     if (!window.location.search) return;
     router.replace(window.location.pathname, { scroll: false });
   }, [router]);
 
+  const clearExampleFromUrl = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("example")) return;
+    params.delete("example");
+    const qs = params.toString();
+    router.replace(
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+      { scroll: false },
+    );
+  }, [router]);
+
+  const setText = useCallback((text: string) => {
+    // A gallery example pins a specific text; retyping breaks it. A preset
+    // or custom set excludes text by design, so this never touches those.
+    if (activeExampleRef.current) {
+      setActiveExample(null);
+      clearExampleFromUrl();
+    }
+    // Length guard: prevents pathological inputs from freezing the canvas.
+    setState((s) => ({ ...s, text: text.slice(0, MAX_TEXT_LENGTH) }));
+  }, [clearExampleFromUrl]);
+
   const setSlider = useCallback((id: SliderId, value: number) => {
     setActivePreset(null); // manual tweak deactivates the preset/set chip
     setActiveCustomSet(null);
-    clearPresetFromUrl();
+    setActiveExample(null);
+    clearDeepLinkFromUrl();
     setState((s) => ({ ...s, [id]: value }));
-  }, [clearPresetFromUrl]);
+  }, [clearDeepLinkFromUrl]);
 
   const setAlign = useCallback((align: TextAlign) => {
     setActiveCustomSet(null);
+    setActiveExample(null);
+    clearExampleFromUrl();
     setState((s) => ({ ...s, align }));
-  }, []);
+  }, [clearExampleFromUrl]);
 
   const setFont = useCallback(async (font: FontFamily) => {
     setActiveCustomSet(null);
+    setActiveExample(null);
+    clearExampleFromUrl();
     setState((s) => ({ ...s, font }));
     await ensureFont(font, stateRef.current.fontSize);
     // ensureFont may resolve after React's paint; force a fresh frame.
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(renderPreview);
-  }, [renderPreview]);
+  }, [renderPreview, clearExampleFromUrl]);
 
   const setPaper = useCallback((key: string) => {
     setActivePreset(null);
     setActiveCustomSet(null);
-    clearPresetFromUrl();
+    setActiveExample(null);
+    clearDeepLinkFromUrl();
     setState((s) => ({ ...s, paper: parsePaperKey(key) }));
-  }, [clearPresetFromUrl]);
+  }, [clearDeepLinkFromUrl]);
 
   const setTransparent = useCallback((transparent: boolean) => {
     setActiveCustomSet(null);
+    setActiveExample(null);
+    clearExampleFromUrl();
     setState((s) => ({ ...s, transparent }));
-  }, []);
+  }, [clearExampleFromUrl]);
 
   const setTint = useCallback((hex: string) => {
     setActiveCustomSet(null);
+    setActiveExample(null);
+    clearExampleFromUrl();
     setState((s) => ({ ...s, tint: hexToRgb(hex) }));
-  }, []);
+  }, [clearExampleFromUrl]);
 
   const setShadowColor = useCallback((hex: string) => {
     setActiveCustomSet(null);
+    setActiveExample(null);
+    clearExampleFromUrl();
     setState((s) => ({ ...s, shadowColor: hexToRgb(hex) }));
-  }, []);
+  }, [clearExampleFromUrl]);
 
   const setAspect = useCallback((aspect: AspectId) => {
     setActiveCustomSet(null);
+    setActiveExample(null);
+    clearExampleFromUrl();
     setState((s) => ({ ...s, aspect }));
-  }, []);
+  }, [clearExampleFromUrl]);
 
   const applyPreset = useCallback((id: PresetId) => {
     const p = PRESETS.find((x) => x.id === id);
     if (!p) return;
     setActivePreset(id);
     setActiveCustomSet(null);
+    setActiveExample(null);
     setState((s) => ({
       ...s,
       depth: p.depth,
@@ -409,12 +481,13 @@ export function useDebossStudio(initialPresetId: PresetId | null = null) {
     if (!set) return;
     setActivePreset(null);
     setActiveCustomSet(id);
-    clearPresetFromUrl();
+    setActiveExample(null);
+    clearDeepLinkFromUrl();
     setState((s) => ({ ...s, ...set.state }));
     await ensureFont(set.state.font, set.state.fontSize);
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(renderPreview);
-  }, [renderPreview, clearPresetFromUrl]);
+  }, [renderPreview, clearDeepLinkFromUrl]);
 
   const deleteCustomSet = useCallback((id: string) => {
     setCustomSets((sets) => sets.filter((x) => x.id !== id));
@@ -507,6 +580,7 @@ export function useDebossStudio(initialPresetId: PresetId | null = null) {
     activePreset,
     customSets,
     activeCustomSet,
+    activeExample,
     defaultSetId,
     paperKey,
     hint,

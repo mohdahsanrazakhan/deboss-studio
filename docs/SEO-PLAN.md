@@ -21,7 +21,7 @@ Primary keyword themes (already wired into `src/config/site.ts`):
 | OG image                      | `app/opengraph-image.tsx`                | Generated (Next's `ImageResponse`/Satori, not a static file) at 1200×630; auto-wires both `og:image` and `twitter:image`; dual text-shadow approximates the real deboss look |
 | Robots meta                   | `metadata.robots`                        | index/follow, large image preview                            |
 | `robots.txt`                  | `app/robots.ts`                          | Allows all, points to sitemap                                |
-| `sitemap.xml`                 | `app/sitemap.ts`                         | Homepage plus one entry per preset deep link                 |
+| `sitemap.xml`                 | `app/sitemap.ts`                         | Homepage, one entry per preset deep link, `/gallery`, and one entry per gallery example |
 | Web app manifest + service worker | `app/manifest.ts`, `public/sw.js`    | Full offline-capable PWA: PNG/maskable/apple icons, `appleWebApp` metadata, hand-rolled offline caching (docs/SECURITY.md) |
 | JSON-LD structured data       | `app/layout.tsx`, `components/layout/FAQ.tsx` | `WebApplication` schema (price 0, `inLanguage: [en, ur, ar, hi]`) plus a separate `FAQPage` schema for the on-page FAQ |
 | On-page copy                  | `components/layout/FAQ.tsx`              | "How it works" (4 steps) + 6-question FAQ, rendered below the studio in `app/page.tsx`; native `<details>`/`<summary>`, zero added client JS |
@@ -39,7 +39,7 @@ Primary keyword themes (already wired into `src/config/site.ts`):
 
 ## Phase 3: growth
 
-- Gallery/examples pages targeting long-tail queries ("bismillah calligraphy png", "urdu poetry image maker"), each with unique copy and pre-rendered sample images.
+- ~~**Gallery/examples pages**~~: done. `/gallery` (index) plus one route per example, `/gallery/<slug>` (`GALLERY_EXAMPLES` in `lib/deboss/constants.ts`: `bismillah-calligraphy-png`, `engraved-plaque-arabic-text`, `wedding-invitation-letterpress-text`, `thank-you-card-soft-deboss`). Each example is a bespoke full look (its own font, paper, engraving, tint, alignment, aspect, and specific sample text), not anchored to the 4 built-in presets, since presets alone don't carry font/text/alignment. Each `/gallery/<slug>` page has its own title/description/canonical (a real path segment, so the canonical-collapse bug affecting `?preset=` pages, above, does NOT apply here) and a per-example OG image (`app/gallery/[slug]/opengraph-image.tsx`) approximating that example's own text/paper via the same Satori trick as the homepage's. The on-page hero (`components/studio/GalleryPreview.tsx`) is a real, engine-rendered preview (`computeLayout`/`drawScene`, not a CSS approximation), since it's the app's own visitor-facing display, unlike the OG image (built for crawlers that can't run JS). "Try this look" links to `/?example=<slug>`, a new deep link (mirrors `?preset=<id>`, extended to a full state including text) resolved in `app/page.tsx` and applied in `useDebossStudio.ts`. Listed in `sitemap.ts`.
 - Blog posts: letterpress history, Nastaliq vs Naskh, how the canvas effect works (developer audience earns backlinks).
 - Submit to tool directories; monitor Search Console for query gaps.
 
