@@ -72,6 +72,12 @@ export function useDebossStudio(
   const [activeCustomSet, setActiveCustomSet] = useState<string | null>(null);
   const [activeExample, setActiveExample] = useState<string | null>(null);
   const [defaultSetId, setDefaultSetId] = useState<string | null>(null);
+  // Bumped only when `state.text` is overwritten from OUTSIDE the rich-text
+  // editor (currently: the gallery-example deep link effect below), never by
+  // the editor's own onChange round trip. RichTextEditor reloads its content
+  // when this changes instead of watching state.text directly, so normal
+  // typing never fights itself.
+  const [textRevision, setTextRevision] = useState(0);
   const [hint, setHint] = useState<string>(DEFAULT_HINT);
   const [isCopying, setIsCopying] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -148,6 +154,11 @@ export function useDebossStudio(
         ensureFont("Gulzar", DEFAULT_STATE.fontSize),
         ensureFont("Noto Naskh Arabic", DEFAULT_STATE.fontSize),
         ensureFont("Playfair Display", DEFAULT_STATE.fontSize),
+        // Real italic is a separate font resource from the upright weight
+        // range above (see FONT_CAPABILITIES, layout.tsx's Google Fonts
+        // URL): preload it too, so a first italic toggle doesn't briefly
+        // fall back to a synthesized slant while it loads.
+        ensureFont("Playfair Display", DEFAULT_STATE.fontSize, "italic"),
         ensureFont("Noto Serif Devanagari", DEFAULT_STATE.fontSize),
         document.fonts.ready,
       ]);
@@ -271,6 +282,7 @@ export function useDebossStudio(
     setActivePreset(null);
     setActiveCustomSet(null);
     setState(example.state);
+    setTextRevision((r) => r + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -582,6 +594,7 @@ export function useDebossStudio(
     activeCustomSet,
     activeExample,
     defaultSetId,
+    textRevision,
     paperKey,
     hint,
     hintFlash,

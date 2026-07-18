@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { DebossState, Layout } from "@/types/deboss";
 import { MAX_PREVIEW_DPR } from "@/lib/deboss/constants";
 import { drawScene } from "@/lib/deboss/engine";
+import { stripTags } from "@/lib/deboss/richtext";
 
 /** Logical CSS px: kept small and fixed so it always fits the peek area above a mobile sheet. */
 const MINI_SIZE = 76;
@@ -25,7 +26,7 @@ export function MiniPreview({ state }: { state: DebossState }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const char = [...state.text.trim()][0] ?? "A";
+    const char = [...stripTags(state.text).trim()][0] ?? "A";
     const miniState: DebossState = {
       ...state,
       text: char,

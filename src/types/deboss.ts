@@ -27,8 +27,9 @@ export type SliderId =
   | "highlight"
   | "blur"
   | "texture"
-  | "fontSize"
-  | "tintStrength";
+  | "tintStrength"
+  | "letterSpacing"
+  | "lineHeightFactor";
 
 /** Fixed canvas shapes; "auto" sizes the canvas to fit the text. */
 export type AspectId = "auto" | "1:1" | "4:5" | "9:16" | "16:9";
@@ -52,7 +53,7 @@ export interface DebossState {
   blur: number;
   /** Paper grain intensity (0-1). */
   texture: number;
-  /** CSS px (24-150). */
+  /** CSS px (24-150): base size for any run without its own per-selection size override. */
   fontSize: number;
   /** Text tint colour. */
   tint: PaperColor;
@@ -62,6 +63,10 @@ export interface DebossState {
   shadowColor: PaperColor;
   /** Canvas shape; "auto" fits the text. */
   aspect: AspectId;
+  /** Extra tracking between characters, in CSS px; negative tightens. */
+  letterSpacing: number;
+  /** Multiplier applied to fontSize to get line-to-line spacing (replaces the old fixed LINE_FACTOR constant). */
+  lineHeightFactor: number;
 }
 
 export type PresetId = "soft" | "deep" | "letterpress" | "luxury";
@@ -131,10 +136,43 @@ export interface SliderDef {
   step: number;
 }
 
+/**
+ * A styled run of text with no internal formatting boundary: `size` is
+ * always concrete (falls back to `DebossState.fontSize` when unset), never
+ * a "default" sentinel, so downstream measurement/drawing never needs to
+ * re-resolve it.
+ */
+export interface TextRun {
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  size: number;
+}
+
+/** One word-or-subword fragment, positioned after DOM measurement (see richtext.ts). Logical (unscaled) px. */
+export interface MeasuredFragment extends TextRun {
+  x: number;
+  y: number;
+  width: number;
+}
+
+export interface MeasuredLine {
+  fragments: MeasuredFragment[];
+  height: number;
+}
+
 /** Result of laying the text out at a given logical width. */
 export interface Layout {
   lines: string[];
   lineHeight: number;
   logicalW: number;
   logicalH: number;
+  /**
+   * Present only when `text` contains styled runs (see `hasRichRuns` in
+   * richtext.ts); `buildMask` draws per-fragment instead of one fillText
+   * per line when this is set. Absent for any plain-text render, which
+   * stays on the original single-font-per-line path unchanged.
+   */
+  richLines?: MeasuredLine[];
 }

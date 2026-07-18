@@ -4,12 +4,12 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 
 ## Text & typography
 
-- [x] Script-agnostic textarea with automatic RTL/LTR direction detection (`detectTextDirection`) and a Urdu default text (بسمِ اللہ / الرحمٰن الرحیم)
+- [x] Script-agnostic rich-text editor with automatic RTL/LTR direction detection (`detectTextDirection`) and a Urdu default text (بسمِ اللہ / الرحمٰن الرحیم)
 - [x] Hard line breaks honoured; automatic direction-aware word wrap to canvas width
 - [x] Five fonts: Noto Nastaliq Urdu (default), Gulzar, Noto Naskh Arabic, Playfair Display, Noto Serif Devanagari; loaded and awaited before first canvas paint
-- [x] Font size slider (24-150 px)
+- [x] Per-selection rich-text formatting: select any text and toggle Bold / Italic / Underline, or bump its size with A-/A+ (replaces the old single global font-size slider). Bold/Italic are disabled per font where there's no real loaded face (Gulzar has no bold; only Playfair Display has real italic), to avoid a browser-synthesized ("faux") style on calligraphic scripts. A style change is snapped to the nearest word boundary for Arabic-script fonts, since a boundary landing mid-word would break letter-joining
 - [x] Alignment: right / center (default) / left segmented control
-- [x] Generous line spacing (LINE_FACTOR 1.9), tuned for Nastaliq's steep descenders but comfortable for other scripts too
+- [x] Letter spacing (-5 to 20 px) and line height (1.0-3.0×, default 1.9×) sliders, adjustable per document in the Type & Paper section
 
 ## Engraving controls (sliders with live numeric readouts)
 
@@ -18,7 +18,7 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 - [x] Highlight strength (0-1, step 0.01)
 - [x] Edge blur (0-12, step 0.1)
 - [x] Paper texture (0-1, step 0.01)
-- [x] Value formatting identical to original (`3.0`, `0.55`, integer font size)
+- [x] Value formatting identical to original (`3.0`, `0.55`)
 
 ## Presets
 

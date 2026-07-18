@@ -55,6 +55,8 @@ export const DEFAULT_STATE: DebossState = {
   tintStrength: 0,
   shadowColor: { r: 64, g: 52, b: 38 }, // #403426
   aspect: "auto",
+  letterSpacing: 0,
+  lineHeightFactor: LINE_FACTOR,
 };
 
 export const FONT_OPTIONS: { value: FontFamily; label: string }[] = [
@@ -65,14 +67,53 @@ export const FONT_OPTIONS: { value: FontFamily; label: string }[] = [
   { value: "Noto Serif Devanagari", label: "Noto Serif Devanagari" },
 ];
 
+/**
+ * Which rich-text styles have a REAL loaded face per font (see the Google
+ * Fonts URL in app/layout.tsx), vs. would only ever render as a browser-
+ * synthesized ("faux") style. Gulzar has no bold weight loaded at all;
+ * only Playfair Display has a real italic face loaded. The rich-text
+ * toolbar (RichTextEditor.tsx) disables Bold/Italic per this table rather
+ * than silently shipping faux-styled glyphs on a calligraphic script.
+ */
+export const FONT_CAPABILITIES: Record<FontFamily, { bold: boolean; italic: boolean }> = {
+  "Noto Nastaliq Urdu": { bold: true, italic: false },
+  "Gulzar": { bold: false, italic: false },
+  "Noto Naskh Arabic": { bold: true, italic: false },
+  "Playfair Display": { bold: true, italic: true },
+  "Noto Serif Devanagari": { bold: true, italic: false },
+};
+
+/**
+ * Cursive/contextual-joining scripts: a style boundary landing mid-word
+ * visibly breaks letter-joining here, since each canvas fillText call
+ * shapes its substring in isolation. RichTextEditor.tsx snaps a partial-
+ * word selection out to the nearest word boundary before applying any
+ * formatting for these fonts specifically.
+ */
+export const CURSIVE_SCRIPT_FONTS: FontFamily[] = [
+  "Noto Nastaliq Urdu",
+  "Gulzar",
+  "Noto Naskh Arabic",
+];
+
 export const SLIDER_DEFS: SliderDef[] = [
   { id: "depth", label: "Depth", min: 0, max: 8, step: 0.1 },
   { id: "shadow", label: "Shadow strength", min: 0, max: 1, step: 0.01 },
   { id: "highlight", label: "Highlight strength", min: 0, max: 1, step: 0.01 },
   { id: "blur", label: "Edge blur", min: 0, max: 12, step: 0.1 },
   { id: "texture", label: "Paper texture", min: 0, max: 1, step: 0.01 },
-  { id: "fontSize", label: "Font size", min: 24, max: 150, step: 1 },
   { id: "tintStrength", label: "Text tint strength", min: 0, max: 1, step: 0.01 },
+];
+
+/**
+ * Typography sliders shown in the "Type & Paper" section, not "Engraving":
+ * these are text-layout parameters (spacing/leading), not debossing-effect
+ * parameters, even though they use the exact same `setSlider` mutator and
+ * generic slider markup as SLIDER_DEFS above.
+ */
+export const TYPE_SLIDER_DEFS: SliderDef[] = [
+  { id: "letterSpacing", label: "Letter spacing", min: -5, max: 20, step: 0.5 },
+  { id: "lineHeightFactor", label: "Line height", min: 1, max: 3, step: 0.05 },
 ];
 
 export const PAPER_TONES: PaperTone[] = [
@@ -327,10 +368,12 @@ export function toSetSnapshot(s: DebossState): CustomSet["state"] {
   const {
     font, align, transparent, paper, depth, shadow, highlight, blur,
     texture, fontSize, tint, tintStrength, shadowColor, aspect,
+    letterSpacing, lineHeightFactor,
   } = s;
   return {
     font, align, transparent, paper, depth, shadow, highlight, blur,
     texture, fontSize, tint, tintStrength, shadowColor, aspect,
+    letterSpacing, lineHeightFactor,
   };
 }
 

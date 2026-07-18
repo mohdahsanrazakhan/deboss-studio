@@ -46,7 +46,7 @@ Primary keyword themes (already wired into `src/config/site.ts`):
 ## Guardrails
 
 - Every new page: unique title/description, canonical, added to `sitemap.ts`.
-- Keep First Load JS lean; the studio should stay the only client island per page.
+- Keep First Load JS lean; the studio should stay the only client island per page. The rich-text editor (Tiptap, `RichTextEditor.tsx`) is a real exception to "no new heavy dependencies," accepted deliberately for the formatting feature; it's loaded via `next/dynamic({ ssr: false })` specifically to keep its bytes in a separate chunk rather than the tracked First Load JS number.
 - Never block rendering on fonts (keep `display=swap`).
 - All URLs/names flow from `config/site.ts`; set `NEXT_PUBLIC_SITE_URL` in production or canonicals will point at localhost.
 

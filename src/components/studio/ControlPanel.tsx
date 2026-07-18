@@ -1,6 +1,7 @@
 "use client";
 
 import { Layers, Plus, SlidersHorizontal, Star, Type as TypeIcon, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
 import type { AspectId, FontFamily, TextAlign } from "@/types/deboss";
@@ -12,11 +13,34 @@ import {
   PAPER_TONES,
   PRESETS,
   SLIDER_DEFS,
+  TYPE_SLIDER_DEFS,
   rgbToHex,
 } from "@/lib/deboss/constants";
-import { detectTextDirection } from "@/lib/deboss/direction";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SectionSheet } from "./SectionSheet";
+
+/**
+ * Tiptap/ProseMirror are a meaningful chunk of JS for a control that isn't
+ * needed until the user actually interacts with text formatting; loading it
+ * via next/dynamic keeps those bytes out of the page's tracked First Load
+ * JS (see docs/SEO-PLAN.md's guardrail). ssr:false since this whole panel
+ * only ever renders client-side anyway (Studio is the "use client" island).
+ */
+const RichTextEditor = dynamic(
+  () => import("./RichTextEditor").then((m) => m.RichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <textarea
+        className="rich-text-input rich-text-input-loading"
+        disabled
+        aria-label="Text (loading editor)"
+        value="Loading editor…"
+        readOnly
+      />
+    ),
+  },
+);
 
 /** Icon sizes for the "My sets" chips: star sits inline, delete is a small floating badge. */
 const CHIP_STAR_ICON_SIZE = 15;
@@ -41,10 +65,8 @@ const ALIGNMENTS: { value: TextAlign; label: string }[] = [
   { value: "left", label: "Left" },
 ];
 
-function formatSliderValue(id: string, v: number): string {
-  return id === "fontSize"
-    ? String(Math.round(v))
-    : v.toFixed(2).replace(/\.00$/, ".0");
+function formatSliderValue(v: number): string {
+  return v.toFixed(2).replace(/\.00$/, ".0");
 }
 
 export function ControlPanel({ studio }: { studio: DebossStudio }) {
@@ -54,6 +76,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     customSets,
     activeCustomSet,
     defaultSetId,
+    textRevision,
     paperKey,
     setText,
     setSlider,
@@ -87,17 +110,14 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     <aside className="panel" aria-label="Controls">
       {/* Text input */}
       <section className="group">
-        <label className="group-label" htmlFor="text-input">
-          Text
-        </label>
-        <textarea
-          id="text-input"
-          dir={detectTextDirection(state.text)}
-          spellCheck={false}
-          placeholder="Type or paste any text…"
-          maxLength={MAX_TEXT_LENGTH}
+        <span className="group-label">Text</span>
+        <RichTextEditor
           value={state.text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={setText}
+          font={state.font}
+          baseSize={state.fontSize}
+          maxLength={MAX_TEXT_LENGTH}
+          externalRevision={textRevision}
         />
       </section>
 
@@ -277,7 +297,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
             <div className="slider-head">
               <label htmlFor={def.id}>{def.label}</label>
               <output htmlFor={def.id}>
-                {formatSliderValue(def.id, state[def.id])}
+                {formatSliderValue(state[def.id])}
               </output>
             </div>
             <input
@@ -336,6 +356,24 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
             ))}
           </div>
         </div>
+
+        {TYPE_SLIDER_DEFS.map((def) => (
+          <div className="slider" key={def.id}>
+            <div className="slider-head">
+              <label htmlFor={def.id}>{def.label}</label>
+              <output htmlFor={def.id}>{formatSliderValue(state[def.id])}</output>
+            </div>
+            <input
+              type="range"
+              id={def.id}
+              min={def.min}
+              max={def.max}
+              step={def.step}
+              value={state[def.id]}
+              onChange={(e) => setSlider(def.id, Number(e.target.value))}
+            />
+          </div>
+        ))}
 
         <div className="field-row">
           <label htmlFor="aspect">Canvas shape</label>

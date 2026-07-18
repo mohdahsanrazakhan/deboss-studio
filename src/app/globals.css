@@ -115,14 +115,70 @@ body {
 .mini-preview { display: none; }
 
 /* Textarea (auto RTL/LTR direction: see detectTextDirection) */
-#text-input {
-  width: 100%;
-  min-height: 92px;
-  resize: vertical;
-  padding: 12px 14px;
+/* Rich text editor: toolbar + contentEditable area styled as one cohesive
+   box, replacing the plain #text-input textarea. */
+.rich-text-editor {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fff;
+  overflow: hidden;
+  transition: border-color .15s, box-shadow .15s;
+}
+.rich-text-editor:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124,111,90,.14);
+}
+
+.rich-text-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.rich-text-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--line);
+}
+.rich-text-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, opacity .15s;
+}
+.rich-text-btn:hover:not(:disabled) {
+  background: rgba(124,111,90,.1);
+  color: var(--ink);
+}
+.rich-text-btn.is-active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.rich-text-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.rich-text-input { width: 100%; }
+.rich-text-input .ProseMirror {
+  min-height: 92px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 12px 14px;
   color: var(--ink);
   /* Stacked so the browser picks whichever face covers the typed script
      per character (Google Fonts' unicode-range subsetting makes this work). */
@@ -130,11 +186,23 @@ body {
   font-size: 1.35rem;
   line-height: 2.1;
   outline: none;
-  transition: border-color .15s, box-shadow .15s;
 }
-#text-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(124,111,90,.14);
+.rich-text-input .ProseMirror p { margin: 0; }
+
+.rich-text-input-loading {
+  display: block;
+  width: 100%;
+  min-height: 92px;
+  max-height: 260px;
+  padding: 12px 14px;
+  border: 0;
+  resize: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 2.1;
+  background: transparent;
+  outline: none;
 }
 
 /* Presets */

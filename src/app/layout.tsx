@@ -12,9 +12,17 @@ import "./globals.css";
  * across RTL (Urdu/Arabic) and LTR (Latin/Devanagari) scripts alike. The
  * CSP (src/middleware.ts) allowlists exactly fonts.googleapis.com (styles)
  * and fonts.gstatic.com (font binaries), nothing else.
+ *
+ * Playfair Display requests BOTH its upright (`0`) and italic (`1`) axis:
+ * it's the only font in this app with a real designed italic face, and
+ * FONT_CAPABILITIES (lib/deboss/constants.ts) gates the rich-text
+ * toolbar's Italic button on that exact fact, so it must stay loaded here.
+ * Every other font keeps only its upright weight range: Arabic/Urdu/
+ * Devanagari faces have no meaningful "italic" form, and requesting one
+ * would only ever render as a browser-synthesized oblique.
  */
 const GOOGLE_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Gulzar&family=Noto+Naskh+Arabic:wght@400..700&family=Noto+Nastaliq+Urdu:wght@400..700&family=Playfair+Display:wght@400..700&family=Noto+Serif+Devanagari:wght@400..700&family=Inter:wght@400;500;600&display=swap";
+  "https://fonts.googleapis.com/css2?family=Gulzar&family=Noto+Naskh+Arabic:wght@400..700&family=Noto+Nastaliq+Urdu:wght@400..700&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Noto+Serif+Devanagari:wght@400..700&family=Inter:wght@400;500;600&display=swap";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
