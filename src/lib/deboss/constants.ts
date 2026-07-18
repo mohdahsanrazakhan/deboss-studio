@@ -68,19 +68,22 @@ export const FONT_OPTIONS: { value: FontFamily; label: string }[] = [
 ];
 
 /**
- * Which rich-text styles have a REAL loaded face per font (see the Google
- * Fonts URL in app/layout.tsx), vs. would only ever render as a browser-
- * synthesized ("faux") style. Gulzar has no bold weight loaded at all;
- * only Playfair Display has a real italic face loaded. The rich-text
- * toolbar (RichTextEditor.tsx) disables Bold/Italic per this table rather
- * than silently shipping faux-styled glyphs on a calligraphic script.
+ * Which rich-text styles are exposed per font in the toolbar
+ * (RichTextEditor.tsx). Bold stays gated to fonts with a REAL loaded bold
+ * face (see the Google Fonts URL in app/layout.tsx): Gulzar has no bold
+ * weight loaded at all, so a "bold" Gulzar glyph would only ever be a
+ * browser-synthesized ("faux") weight, which visibly merges its letter
+ * joins. Italic is enabled for every font by deliberate choice: only
+ * Playfair Display has a real italic face, so every other font renders a
+ * browser-synthesized oblique slant, and that's accepted rather than
+ * disabling the control.
  */
 export const FONT_CAPABILITIES: Record<FontFamily, { bold: boolean; italic: boolean }> = {
-  "Noto Nastaliq Urdu": { bold: true, italic: false },
-  "Gulzar": { bold: false, italic: false },
-  "Noto Naskh Arabic": { bold: true, italic: false },
+  "Noto Nastaliq Urdu": { bold: true, italic: true },
+  "Gulzar": { bold: false, italic: true },
+  "Noto Naskh Arabic": { bold: true, italic: true },
   "Playfair Display": { bold: true, italic: true },
-  "Noto Serif Devanagari": { bold: true, italic: false },
+  "Noto Serif Devanagari": { bold: true, italic: true },
 };
 
 /**
