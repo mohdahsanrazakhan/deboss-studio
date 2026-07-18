@@ -114,6 +114,56 @@ body {
 .section-modal-header { display: none; }
 .mini-preview { display: none; }
 
+/* ----------------- Desktop accordion (Presets/Sets, Engraving, Type & paper)
+   Presets/Sets, Engraving, and Type & Paper each collapse behind a clickable
+   header on wide screens, so tweaking one doesn't force scrolling past the
+   other two, matching the "only what I'm tweaking is expanded" mobile-sheet
+   behaviour these same sections already have (see SectionSheet.tsx: both
+   share the one `openSection` state). Hidden entirely on narrow screens,
+   where the .mobile-menu grid + each sheet's own close button do this job
+   instead (see the max-width:880px block below). */
+.section-modal { border-bottom: 1px solid var(--line); }
+.section-modal:last-child { border-bottom: 0; }
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 15px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+  transition: color .15s;
+}
+.accordion-header:hover { color: var(--accent); }
+.accordion-header svg:first-child { flex: none; color: var(--accent); }
+.accordion-header-label { flex: 1; }
+.accordion-chevron { flex: none; color: var(--ink-soft); transition: transform .2s ease; }
+.accordion-header[aria-expanded="true"] .accordion-chevron { transform: rotate(180deg); }
+
+.accordion-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .22s ease;
+}
+.accordion-body.is-open { grid-template-rows: 1fr; }
+.accordion-body-inner { overflow: hidden; min-height: 0; }
+/* The accordion header already separates this section visually, so the
+   first group's own top padding/label spacing would be redundant on top
+   of it; the group's OWN divider between e.g. "Presets" and "My sets"
+   (or the last group's trailing one, right before the section's own
+   border-bottom above) stays untouched. */
+.accordion-body-inner .group:first-child { padding-top: 2px; }
+.accordion-body-inner .group:last-child { border-bottom: 0; padding-bottom: 4px; }
+
 /* Textarea (auto RTL/LTR direction: see detectTextDirection) */
 /* Rich text editor: toolbar + contentEditable area styled as one cohesive
    box, replacing the plain #text-input textarea. */
@@ -779,9 +829,14 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   .mobile-menu-btn:hover { border-color: var(--accent); background: rgba(124,111,90,.05); }
   .mobile-menu-btn:active { transform: translateY(1px); }
 
-  /* SectionSheet: hidden by default, becomes a bottom sheet once opened. */
-  .section-modal { display: none; }
+  /* SectionSheet: hidden by default, becomes a bottom sheet once opened.
+     The desktop accordion trigger stays hidden here (the mobile-menu grid
+     above opens sheets instead); its border/collapse rules are reset so
+     the fixed-position sheet's own box isn't affected by them. */
+  .section-modal { display: none; border-bottom: 0; }
   .section-modal.is-open { display: block; }
+  .accordion-header { display: none; }
+  .accordion-body, .accordion-body.is-open { display: block; grid-template-rows: none; }
 
   .section-modal-backdrop {
     display: block; position: fixed; inset: 0; z-index: 40;

@@ -100,11 +100,15 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
   const pendingDeleteSet =
     customSets.find((s) => s.id === pendingDeleteId) ?? null;
 
-  // UI-only: which section is open as a mobile bottom sheet (see SectionSheet).
-  // Irrelevant on wide screens: the mobile-menu buttons that set it are
-  // CSS-hidden there, so this never leaves `null` outside a mobile context.
+  // UI-only: which section is open, shared by the mobile bottom sheet AND
+  // the desktop accordion (see SectionSheet) so exactly one is ever open
+  // either way. Starts fully collapsed on both: nothing to open on mobile
+  // until a mobile-menu button is tapped, and starting collapsed on desktop
+  // is what keeps the sidebar short until the user picks something to tweak.
   const [openSection, setOpenSection] = useState<string | null>(null);
   const closeSection = () => setOpenSection(null);
+  const toggleSection = (id: string) =>
+    setOpenSection((cur) => (cur === id ? null : id));
 
   return (
     <aside className="panel" aria-label="Controls">
@@ -140,7 +144,9 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
       <SectionSheet
         id="presets"
         title="Presets & Sets"
+        icon={Layers}
         openSection={openSection}
+        onToggle={() => toggleSection("presets")}
         onClose={closeSection}
         previewState={state}
       >
@@ -285,7 +291,9 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
       <SectionSheet
         id="engraving"
         title="Engraving"
+        icon={SlidersHorizontal}
         openSection={openSection}
+        onToggle={() => toggleSection("engraving")}
         onClose={closeSection}
         previewState={state}
       >
@@ -317,7 +325,9 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
       <SectionSheet
         id="type-paper"
         title="Type & Paper"
+        icon={TypeIcon}
         openSection={openSection}
+        onToggle={() => toggleSection("type-paper")}
         onClose={closeSection}
         previewState={state}
       >
