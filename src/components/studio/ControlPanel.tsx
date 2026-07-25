@@ -8,6 +8,7 @@ import type { AspectId, FontFamily, TextAlign } from "@/types/deboss";
 import {
   ASPECT_OPTIONS,
   FONT_OPTIONS,
+  MAX_BRANDING_LENGTH,
   MAX_SET_NAME_LENGTH,
   MAX_TEXT_LENGTH,
   PAPER_TONES,
@@ -79,6 +80,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     textRevision,
     paperKey,
     setText,
+    setBrandingText,
     setSlider,
     setAlign,
     setFont,
@@ -419,6 +421,21 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
             onChange={(e) => setShadowColor(e.target.value)}
           />
         </div>
+
+        <div className="field-row">
+          <label htmlFor="brandingText">Branding</label>
+          <input
+            type="text"
+            id="brandingText"
+            placeholder="e.g. @yourname"
+            maxLength={MAX_BRANDING_LENGTH}
+            value={state.brandingText}
+            onChange={(e) => setBrandingText(e.target.value)}
+          />
+        </div>
+        {state.brandingText.trim() && (
+          <p className="field-hint">Drag it on the canvas to reposition.</p>
+        )}
 
         <div className="field-row">
           <span id="paper-label">Paper tone</span>

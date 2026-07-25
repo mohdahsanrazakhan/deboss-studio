@@ -67,6 +67,11 @@ export interface DebossState {
   letterSpacing: number;
   /** Multiplier applied to fontSize to get line-to-line spacing (replaces the old fixed LINE_FACTOR constant). */
   lineHeightFactor: number;
+  /** Optional small watermark-style label (e.g. an Instagram handle); empty string renders nothing. */
+  brandingText: string;
+  /** Normalized (0-1) center position of the branding text within the canvas. */
+  brandingX: number;
+  brandingY: number;
 }
 
 export type PresetId = "soft" | "deep" | "letterpress" | "luxury";
@@ -94,7 +99,8 @@ export interface CustomSet {
   id: string;
   name: string;
   createdAt: number;
-  state: Omit<DebossState, "text">;
+  /** Excludes `text` (a Set is a look, not a message) and the branding fields (personal metadata orthogonal to "the look," not part of a saved style). */
+  state: Omit<DebossState, "text" | "brandingText" | "brandingX" | "brandingY">;
 }
 
 /**

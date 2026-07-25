@@ -36,6 +36,27 @@ export const MAX_SET_NAME_LENGTH = 40;
 export const MAX_CUSTOM_SETS = 24;
 /** Filename used for both the download and native-share export. */
 export const EXPORT_FILENAME = "text-deboss.png";
+/** Max length for the branding watermark text (e.g. an Instagram handle). */
+export const MAX_BRANDING_LENGTH = 40;
+/** localStorage key for the remembered branding text (not its position, which lives in DebossState like everything else and resets per document). */
+export const BRANDING_TEXT_STORAGE_KEY = "textDebossStudio.brandingText";
+/** Fixed clean face for the branding watermark, independent of the main text's font (an Instagram handle doesn't need Nastaliq/Naskh treatment); already loaded as a real webfont for the UI, see the Google Fonts URL in app/layout.tsx. */
+export const BRANDING_FONT_FAMILY = "Inter";
+/** Branding font size is `logicalW * BRANDING_FONT_SIZE_RATIO`, clamped to this range (logical/unscaled px). */
+export const BRANDING_FONT_SIZE_MIN = 14;
+export const BRANDING_FONT_SIZE_MAX = 28;
+export const BRANDING_FONT_SIZE_RATIO = 0.035;
+/**
+ * Flat, semi-transparent watermark tones: PAPER_TONES includes "Black"
+ * (#181614), not just light stock, so a single fixed dark fill goes
+ * invisible on dark paper. `getBrandingFill` (engine.ts) picks between
+ * these two based on the current paper's own luminance, the same way a
+ * real print shop would choose light or dark foil depending on the stock.
+ */
+export const BRANDING_FILL_ON_LIGHT_PAPER = "rgba(43,40,35,.45)";
+export const BRANDING_FILL_ON_DARK_PAPER = "rgba(255,255,255,.55)";
+/** Perceived-luminance (0-255) cutoff below which paper counts as "dark". */
+export const BRANDING_PAPER_LUMINANCE_THRESHOLD = 140;
 
 export const DEFAULT_TEXT = "بسمِ اللہ\nالرحمٰن الرحیم";
 
@@ -57,6 +78,9 @@ export const DEFAULT_STATE: DebossState = {
   aspect: "auto",
   letterSpacing: 0,
   lineHeightFactor: LINE_FACTOR,
+  brandingText: "",
+  brandingX: 0.86,
+  brandingY: 0.9,
 };
 
 export const FONT_OPTIONS: { value: FontFamily; label: string }[] = [
@@ -366,7 +390,7 @@ export function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): stri
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-/** Strip `text` from a DebossState to build a CustomSet snapshot (a Set excludes the typed text). */
+/** Strip `text` and the branding fields from a DebossState to build a CustomSet snapshot (a Set is a look, not a message, and branding is personal metadata orthogonal to both). */
 export function toSetSnapshot(s: DebossState): CustomSet["state"] {
   const {
     font, align, transparent, paper, depth, shadow, highlight, blur,

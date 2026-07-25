@@ -2,6 +2,7 @@
 
 import { Copy, Download, Share2 } from "lucide-react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
+import { BrandingHandle } from "./BrandingHandle";
 
 export function PreviewStage({ studio }: { studio: DebossStudio }) {
   const {
@@ -29,6 +30,7 @@ export function PreviewStage({ studio }: { studio: DebossStudio }) {
           role="img"
           aria-label="Live preview of the debossed text"
         />
+        <BrandingHandle studio={studio} />
       </div>
 
       <div className="stage-bar">

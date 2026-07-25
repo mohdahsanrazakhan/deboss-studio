@@ -10,6 +10,7 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 - [x] Per-selection rich-text formatting: select any text and toggle Bold / Italic / Underline, or bump its size with A-/A+ (replaces the old single global font-size slider). Bold is disabled per font where there's no real loaded bold face (Gulzar only), to avoid a browser-synthesized ("faux") weight on that calligraphic script; Italic is available for every font (only Playfair Display has a real italic face, every other font renders a browser-synthesized oblique slant). A style change is snapped to the nearest word boundary for Arabic-script fonts, since a boundary landing mid-word would break letter-joining
 - [x] Alignment: right / center (default) / left segmented control
 - [x] Letter spacing (-5 to 20 px) and line height (1.0-3.0×, default 1.9×) sliders, adjustable per document in the Type & Paper section
+- [x] Draggable branding watermark: an optional second, independently-positioned text (e.g. an Instagram handle), entered in the Type & Paper section and dragged anywhere directly on the canvas preview (pointer-capture, touch-friendly, clamped so it can never end up partially clipped in the export). Rendered as a flat, subtle overlay after the main debossed effect, not pushed through the glyph-mask pipeline, so it works even with no main text at all. The text is remembered across sessions (its own `localStorage` key); its position is per-document and excluded from Custom Sets, like the main text
 
 ## Engraving controls (sliders with live numeric readouts)
 

@@ -32,6 +32,9 @@ export function MiniPreview({ state }: { state: DebossState }) {
       text: char,
       align: "center",
       fontSize: 48,
+      // The watermark would be cluttered/meaningless at this size, same
+      // reasoning as reducing the main text down to a single glyph.
+      brandingText: "",
     };
     const layout: Layout = {
       lines: [char],

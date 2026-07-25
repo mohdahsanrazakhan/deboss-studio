@@ -35,6 +35,7 @@ import type {
   TextAlign,
 } from "@/types/deboss";
 import {
+  BRANDING_TEXT_STORAGE_KEY,
   CUSTOM_SETS_STORAGE_KEY,
   DEFAULT_HINT,
   DEFAULT_SET_STORAGE_KEY,
@@ -42,6 +43,7 @@ import {
   EXPORT_FILENAME,
   EXPORT_SCALE,
   GALLERY_EXAMPLES,
+  MAX_BRANDING_LENGTH,
   MAX_CUSTOM_SETS,
   MAX_PREVIEW_DPR,
   MAX_SET_NAME_LENGTH,
@@ -97,6 +99,7 @@ export function useDebossStudio(
   const customSetsRef = useRef(customSets);
   customSetsRef.current = customSets;
   const customSetsLoadedRef = useRef(false);
+  const brandingLoadedRef = useRef(false);
 
   // Latest active-example id, read by setText without adding it as a dependency.
   const activeExampleRef = useRef(activeExample);
@@ -236,6 +239,24 @@ export function useDebossStudio(
   }, []);
 
   /* ------------------------------------------------------------------
+     Branding text: remembered across sessions (unlike the main `text`,
+     a handle is a fixed identity, not per-design content), its own
+     localStorage key, restored before first paint like the default set
+     above. Position (brandingX/Y) is NOT persisted here; it lives in
+     DebossState like everything else and resets per document.
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(BRANDING_TEXT_STORAGE_KEY);
+      if (stored) setState((s) => ({ ...s, brandingText: stored }));
+    } catch {
+      /* storage unavailable or corrupt: start with no remembered branding */
+    } finally {
+      brandingLoadedRef.current = true;
+    }
+  }, []);
+
+  /* ------------------------------------------------------------------
      Preset deep link: a validated `?preset=` query value resolved
      server-side (app/page.tsx) applies on first paint. Declared AFTER
      the custom-sets/default-set load effect above so its state update
@@ -311,6 +332,19 @@ export function useDebossStudio(
     }
   }, [defaultSetId]);
 
+  useEffect(() => {
+    if (!brandingLoadedRef.current) return;
+    try {
+      if (state.brandingText) {
+        window.localStorage.setItem(BRANDING_TEXT_STORAGE_KEY, state.brandingText);
+      } else {
+        window.localStorage.removeItem(BRANDING_TEXT_STORAGE_KEY);
+      }
+    } catch {
+      /* storage full/unavailable: branding text stays in memory for this session */
+    }
+  }, [state.brandingText]);
+
   /* ------------------------------------------------------------------
      State mutators
      ------------------------------------------------------------------ */
@@ -361,6 +395,19 @@ export function useDebossStudio(
     // Length guard: prevents pathological inputs from freezing the canvas.
     setState((s) => ({ ...s, text: text.slice(0, MAX_TEXT_LENGTH) }));
   }, [clearExampleFromUrl]);
+
+  // Branding is personal metadata orthogonal to "the look": unlike every
+  // other mutator below, it deliberately does NOT clear activePreset/
+  // activeCustomSet/activeExample or touch the deep-link URL, the same
+  // exception already granted to setText.
+  const setBrandingText = useCallback((text: string) => {
+    setState((s) => ({ ...s, brandingText: text.slice(0, MAX_BRANDING_LENGTH) }));
+  }, []);
+
+  const setBrandingPosition = useCallback((x: number, y: number) => {
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+    setState((s) => ({ ...s, brandingX: clamp(x), brandingY: clamp(y) }));
+  }, []);
 
   const setSlider = useCallback((id: SliderId, value: number) => {
     setActivePreset(null); // manual tweak deactivates the preset/set chip
@@ -604,6 +651,8 @@ export function useDebossStudio(
     canvasRef,
     stageRef,
     setText,
+    setBrandingText,
+    setBrandingPosition,
     setSlider,
     setAlign,
     setFont,

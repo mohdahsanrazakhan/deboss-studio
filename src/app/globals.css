@@ -64,6 +64,16 @@ body {
 
 .brand-title {
   margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em;
+  /* Classic dual text-shadow "letterpress" trick (light shadow down-right,
+     dark shadow up-left), the same CSS approximation of the canvas engine's
+     real inner-shadow deboss effect already used for the brand name in
+     app/opengraph-image.tsx, so the on-page header and social-share
+     previews read as the same brand mark. Real text throughout, not a
+     canvas: stays crawlable/indexable and needs no client JS. */
+  color: #ded7c4;
+  text-shadow:
+    1px 1.5px 1px rgba(255,255,255,.9),
+    -1.5px -2px 2px rgba(90,78,58,.45);
 }
 .brand-text p {
   margin: 1px 0 0; font-size: .85rem; color: var(--ink-soft);
@@ -424,10 +434,27 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
 .field-row:last-child { margin-bottom: 0; }
 .field-row > label { font-size: .86rem; color: var(--ink); }
 
+.field-hint {
+  margin: -6px 0 12px;
+  font-size: .78rem;
+  color: var(--ink-soft);
+}
+
 select#font, select#aspect {
   font: inherit; font-size: .85rem;
   padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px;
   background: #fff; color: var(--ink); cursor: pointer; max-width: 190px;
+}
+
+input#brandingText {
+  font: inherit; font-size: .85rem;
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px;
+  background: #fff; color: var(--ink); outline: none; max-width: 190px;
+  transition: border-color .15s, box-shadow .15s;
+}
+input#brandingText:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124,111,90,.14);
 }
 
 input[type="color"] {
@@ -467,6 +494,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 .stage { min-width: 0; }
 
 .stage-inner {
+  position: relative; /* positioning context for .branding-handle */
   background:
     /* subtle checkerboard shows through only where the artwork is transparent */
     repeating-conic-gradient(#eeeae1 0% 25%, #f7f4ee 0% 50%) 0 0 / 22px 22px;
@@ -484,6 +512,29 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   max-width: 100%;
   border-radius: 6px;
   box-shadow: 0 10px 30px rgba(40,35,25,.14);
+}
+
+/* Invisible pointer-capture drag target for the branding watermark: the
+   text itself is baked into the canvas pixels, this div only exists to
+   catch drag gestures over that spot. No visible fill at rest so it never
+   shows up in a screenshot of the preview, only a hint of it on hover.
+   The hover/drag ring uses a light-with-dark-halo box-shadow (not a plain
+   coloured border) specifically so it stays visible on ANY paper tone,
+   including "Black" (PAPER_TONES) — a single muted colour would wash out
+   against dark paper the same way the watermark fill itself used to. */
+.branding-handle {
+  position: absolute;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 4px;
+  transition: box-shadow .12s;
+}
+.branding-handle:hover {
+  box-shadow: 0 0 0 1px rgba(255,255,255,.85), 0 0 0 2px rgba(0,0,0,.35);
+}
+.branding-handle.is-dragging {
+  cursor: grabbing;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.9), 0 0 0 3px rgba(0,0,0,.4);
 }
 
 .stage-bar {
