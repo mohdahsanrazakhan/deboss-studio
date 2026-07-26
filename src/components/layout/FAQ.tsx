@@ -13,8 +13,8 @@ import { ChevronDown } from "lucide-react";
 
 const HOW_IT_WORKS = [
   {
-    title: "Type your text",
-    body: "Paste or type any text, in any script. Direction (RTL or LTR) is detected automatically as you type.",
+    title: "Add & arrange text",
+    body: "Click anywhere on the canvas to add a text block, or click existing text to edit it. Add as many blocks as you like and drag each into place; direction (RTL or LTR) is detected automatically per block.",
   },
   {
     title: "Tune the engraving",

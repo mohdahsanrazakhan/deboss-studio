@@ -64,16 +64,7 @@ body {
 
 .brand-title {
   margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em;
-  /* Classic dual text-shadow "letterpress" trick (light shadow down-right,
-     dark shadow up-left), the same CSS approximation of the canvas engine's
-     real inner-shadow deboss effect already used for the brand name in
-     app/opengraph-image.tsx, so the on-page header and social-share
-     previews read as the same brand mark. Real text throughout, not a
-     canvas: stays crawlable/indexable and needs no client JS. */
-  color: #ded7c4;
-  text-shadow:
-    1px 1.5px 1px rgba(255,255,255,.9),
-    -1.5px -2px 2px rgba(90,78,58,.45);
+  color: var(--ink);
 }
 .brand-text p {
   margin: 1px 0 0; font-size: .85rem; color: var(--ink-soft);
@@ -174,28 +165,104 @@ body {
 .accordion-body-inner .group:first-child { padding-top: 2px; }
 .accordion-body-inner .group:last-child { border-bottom: 0; padding-bottom: 4px; }
 
-/* Textarea (auto RTL/LTR direction: see detectTextDirection) */
-/* Rich text editor: toolbar + contentEditable area styled as one cohesive
-   box, replacing the plain #text-input textarea. */
-.rich-text-editor {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-  overflow: hidden;
-  transition: border-color .15s, box-shadow .15s;
+/* In-canvas text editing (CanvasTextOverlay.tsx): the sidebar text box is
+   gone; text is edited directly on top of the canvas. Two mutually
+   exclusive pieces share `.stage-inner`'s positioning context with
+   `.branding-handle` (position:relative, set where that's defined below). */
+
+/* Idle state: invisible hit-region for hover/click(=edit)/drag(=move),
+   sized to hug the actual rendered text (CanvasTextOverlay's content box).
+   Same light-with-dark-halo selection ring as .branding-handle, for the
+   same reason: it must stay visible on ANY paper tone, including "Black". */
+.canvas-text-hit {
+  position: absolute;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 4px;
+  transition: box-shadow .12s;
 }
-.rich-text-editor:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(124,111,90,.14);
+.canvas-text-hit:hover, .canvas-text-hit.is-selected {
+  box-shadow: 0 0 0 1px rgba(255,255,255,.85), 0 0 0 2px rgba(0,0,0,.35);
 }
 
+/* Small delete badge on a selected (not-editing) block, same paper-agnostic
+   light-with-dark-halo trick as the selection ring itself, since a plain
+   bordered badge (like .set-chip-delete elsewhere) would wash out on dark
+   paper the same way a flat colour already has twice in this app. */
+.canvas-text-delete {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 0;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.85), 0 0 0 2px rgba(0,0,0,.3), var(--shadow-sm);
+}
+.canvas-text-delete:hover { color: var(--accent); }
+
+/* Full-canvas catch-all BEHIND the per-block hit-regions/editors above it
+   in DOM order (later siblings paint on top with no z-index needed): a
+   plain click on it (not a drag-through, and not just dismissing an
+   already-open editor) creates a new block at that spot. */
+.canvas-text-background {
+  position: absolute;
+  cursor: text;
+}
+
+/* Editing state: a transparent, borderless container exactly matching
+   buildMask's own wrap-width/position math (engine.ts), holding the real
+   RichTextEditor. Font-family/size/line-height/letter-spacing/align/dir are
+   all set dynamically by RichTextEditor.tsx itself (must pixel-match the
+   canvas, so they can't be static CSS here). */
+.canvas-text-overlay {
+  position: absolute;
+}
+.canvas-text-overlay .rich-text-editor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.canvas-text-overlay .rich-text-input { width: 100%; height: 100%; }
+.canvas-text-overlay .rich-text-input .ProseMirror {
+  height: 100%;
+  outline: none;
+  color: var(--ink);
+  /* Baseline fallback stack before RichTextEditor.tsx's own effect sets the
+     active font first; same stack as that effect uses. */
+  font-family: "Noto Nastaliq Urdu", "Playfair Display", "Noto Serif Devanagari", "Gulzar", "Noto Naskh Arabic", ui-serif, serif;
+}
+.canvas-text-overlay.is-dark-paper .rich-text-input .ProseMirror { color: #fff; }
+.canvas-text-overlay .rich-text-input .ProseMirror p { margin: 0; }
+
+/* Floating toolbar: portaled to <body> by RichTextEditor.tsx (createPortal),
+   NOT a descendant of `.canvas-text-overlay`/`.stage-inner` any more, so
+   `.stage-inner`'s `overflow: hidden` can never clip it near a canvas edge.
+   `top`/`left` are computed in JS (recomputeToolbarPosition: sits just
+   above the block, flips below or clamps into the viewport when there's no
+   room) and set as inline style; position:fixed here is what makes those
+   viewport-relative coordinates correct. z-index sits above the mobile
+   section-sheet (40/41) and the mini-preview swatch (45), since editing
+   must never be visually blocked by either, but below ConfirmDialog's
+   modal overlay (50). */
 .rich-text-toolbar {
+  position: fixed;
+  z-index: 46;
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--panel);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
 }
 .rich-text-toolbar-divider {
   width: 1px;
@@ -231,38 +298,6 @@ body {
 .rich-text-btn:disabled {
   opacity: .35;
   cursor: not-allowed;
-}
-
-.rich-text-input { width: 100%; }
-.rich-text-input .ProseMirror {
-  min-height: 92px;
-  max-height: 260px;
-  overflow-y: auto;
-  padding: 12px 14px;
-  color: var(--ink);
-  /* Stacked so the browser picks whichever face covers the typed script
-     per character (Google Fonts' unicode-range subsetting makes this work). */
-  font-family: "Noto Nastaliq Urdu", "Playfair Display", "Noto Serif Devanagari", "Gulzar", "Noto Naskh Arabic", ui-serif, serif;
-  font-size: 1.35rem;
-  line-height: 2.1;
-  outline: none;
-}
-.rich-text-input .ProseMirror p { margin: 0; }
-
-.rich-text-input-loading {
-  display: block;
-  width: 100%;
-  min-height: 92px;
-  max-height: 260px;
-  padding: 12px 14px;
-  border: 0;
-  resize: none;
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 1.35rem;
-  line-height: 2.1;
-  background: transparent;
-  outline: none;
 }
 
 /* Presets */
@@ -425,6 +460,7 @@ input[type="range"]::-moz-range-thumb {
   background: #fff; border: 1px solid #cabfa6; box-shadow: var(--shadow-sm);
 }
 input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Fields (font, alignment, paper) */
 .field-row {
@@ -445,6 +481,7 @@ select#font, select#aspect {
   padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px;
   background: #fff; color: var(--ink); cursor: pointer; max-width: 190px;
 }
+select#font:disabled { opacity: .45; cursor: not-allowed; }
 
 input#brandingText {
   font: inherit; font-size: .85rem;
@@ -477,6 +514,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 .seg-btn.is-active {
   background: #fff; color: var(--ink); box-shadow: var(--shadow-sm);
 }
+.seg-btn:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Paper swatches */
 .swatches { display: inline-flex; gap: 8px; }
@@ -494,7 +532,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 .stage { min-width: 0; }
 
 .stage-inner {
-  position: relative; /* positioning context for .branding-handle */
+  position: relative; /* positioning context for .branding-handle and .canvas-text-hit/.canvas-text-overlay */
   background:
     /* subtle checkerboard shows through only where the artwork is transparent */
     repeating-conic-gradient(#eeeae1 0% 25%, #f7f4ee 0% 50%) 0 0 / 22px 22px;
@@ -542,6 +580,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   flex-wrap: wrap; gap: 12px;
   margin-top: 16px;
 }
+.stage-bar-left { display: flex; align-items: center; gap: 12px; }
 
 .checkbox { display: inline-flex; align-items: center; gap: 8px; font-size: .88rem; color: var(--ink); cursor: pointer; }
 .checkbox input { width: 16px; height: 16px; accent-color: var(--accent); }

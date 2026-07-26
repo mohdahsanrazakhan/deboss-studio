@@ -20,26 +20,45 @@ export type FontFamily =
   | "Playfair Display"
   | "Noto Serif Devanagari";
 
-/** IDs of the numeric slider-controlled parameters. */
+/** IDs of the numeric slider-controlled parameters (document-level/shared across all text blocks). */
 export type SliderId =
   | "depth"
   | "shadow"
   | "highlight"
   | "blur"
   | "texture"
-  | "tintStrength"
-  | "letterSpacing"
-  | "lineHeightFactor";
+  | "tintStrength";
 
 /** Fixed canvas shapes; "auto" sizes the canvas to fit the text. */
 export type AspectId = "auto" | "1:1" | "4:5" | "9:16" | "16:9";
 
-/** The single source of truth for a render. */
-export interface DebossState {
+/**
+ * One independently-positioned, independently-styled text layer (Canva-
+ * style block). `DebossState.textBlocks` holds one or more of these; a
+ * fresh/migrated document always has exactly one, at the default centered
+ * anchor, so nothing about single-block behaviour changes.
+ */
+export interface TextBlock {
+  id: string;
   /** The text to deboss, in any script; hard line breaks are honoured. */
   text: string;
   font: FontFamily;
   align: TextAlign;
+  /** CSS px (24-150): base size for any run without its own per-selection size override. */
+  fontSize: number;
+  /** Extra tracking between characters, in CSS px; negative tightens. */
+  letterSpacing: number;
+  /** Multiplier applied to fontSize to get line-to-line spacing (replaces the old fixed LINE_FACTOR constant). */
+  lineHeightFactor: number;
+  /** Normalized (0-1) center position of this block within the canvas; (0.5, 0.5) = centered. */
+  textAnchorX: number;
+  textAnchorY: number;
+}
+
+/** The single source of truth for a render. */
+export interface DebossState {
+  /** One or more independently-positioned/styled text layers; see TextBlock. */
+  textBlocks: TextBlock[];
   /** Export/preview with a transparent background instead of paper. */
   transparent: boolean;
   paper: PaperColor;
@@ -53,20 +72,14 @@ export interface DebossState {
   blur: number;
   /** Paper grain intensity (0-1). */
   texture: number;
-  /** CSS px (24-150): base size for any run without its own per-selection size override. */
-  fontSize: number;
   /** Text tint colour. */
   tint: PaperColor;
   /** 0 = natural paper-colour deboss, 1 = fully tinted (0-1). */
   tintStrength: number;
   /** Dark inner-shadow colour. */
   shadowColor: PaperColor;
-  /** Canvas shape; "auto" fits the text. */
+  /** Canvas shape; "auto" fits textBlocks[0] only (see engine.ts computeLayout). */
   aspect: AspectId;
-  /** Extra tracking between characters, in CSS px; negative tightens. */
-  letterSpacing: number;
-  /** Multiplier applied to fontSize to get line-to-line spacing (replaces the old fixed LINE_FACTOR constant). */
-  lineHeightFactor: number;
   /** Optional small watermark-style label (e.g. an Instagram handle); empty string renders nothing. */
   brandingText: string;
   /** Normalized (0-1) center position of the branding text within the canvas. */
@@ -99,8 +112,8 @@ export interface CustomSet {
   id: string;
   name: string;
   createdAt: number;
-  /** Excludes `text` (a Set is a look, not a message) and the branding fields (personal metadata orthogonal to "the look," not part of a saved style). */
-  state: Omit<DebossState, "text" | "brandingText" | "brandingX" | "brandingY">;
+  /** Excludes `textBlocks` entirely (a Set is a reusable look, not pinned content, styling, or position) and the branding fields (personal metadata orthogonal to "the look," not part of a saved style). */
+  state: Omit<DebossState, "textBlocks" | "brandingText" | "brandingX" | "brandingY">;
 }
 
 /**
@@ -142,11 +155,22 @@ export interface SliderDef {
   step: number;
 }
 
+/** IDs of the numeric slider-controlled parameters that live on a TextBlock (per-block, not shared). */
+export type TextBlockSliderId = "letterSpacing" | "lineHeightFactor";
+
+export interface TextBlockSliderDef {
+  id: TextBlockSliderId;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}
+
 /**
  * A styled run of text with no internal formatting boundary: `size` is
- * always concrete (falls back to `DebossState.fontSize` when unset), never
- * a "default" sentinel, so downstream measurement/drawing never needs to
- * re-resolve it.
+ * always concrete (falls back to the owning `TextBlock.fontSize` when
+ * unset), never a "default" sentinel, so downstream measurement/drawing
+ * never needs to re-resolve it.
  */
 export interface TextRun {
   text: string;
@@ -176,9 +200,22 @@ export interface Layout {
   logicalH: number;
   /**
    * Present only when `text` contains styled runs (see `hasRichRuns` in
-   * richtext.ts); `buildMask` draws per-fragment instead of one fillText
-   * per line when this is set. Absent for any plain-text render, which
-   * stays on the original single-font-per-line path unchanged.
+   * richtext.ts); `buildBlockMask` draws per-fragment instead of one
+   * fillText per line when this is set. Absent for any plain-text render,
+   * which stays on the original single-font-per-line path unchanged.
    */
   richLines?: MeasuredLine[];
+}
+
+/**
+ * One full scene's worth of layout: the shared canvas dimensions (derived
+ * from `textBlocks[0]` only when `aspect === "auto"`, see engine.ts
+ * `computeLayout`) plus each block's own `Layout`, all measured against
+ * those same dimensions/wrap width. `drawScene` and the in-canvas editor
+ * (`CanvasTextOverlay.tsx`) both work off this, never a bare `Layout`.
+ */
+export interface SceneLayout {
+  logicalW: number;
+  logicalH: number;
+  blocks: { id: string; layout: Layout }[];
 }

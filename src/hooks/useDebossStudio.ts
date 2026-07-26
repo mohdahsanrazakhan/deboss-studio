@@ -32,7 +32,7 @@ import type {
   FontFamily,
   PresetId,
   SliderId,
-  TextAlign,
+  TextBlock,
 } from "@/types/deboss";
 import {
   BRANDING_TEXT_STORAGE_KEY,
@@ -40,6 +40,7 @@ import {
   DEFAULT_HINT,
   DEFAULT_SET_STORAGE_KEY,
   DEFAULT_STATE,
+  DEFAULT_TEXT_BLOCK,
   EXPORT_FILENAME,
   EXPORT_SCALE,
   GALLERY_EXAMPLES,
@@ -47,10 +48,10 @@ import {
   MAX_CUSTOM_SETS,
   MAX_PREVIEW_DPR,
   MAX_SET_NAME_LENGTH,
-  MAX_TEXT_LENGTH,
+  MAX_TEXT_BLOCKS,
   MIN_LOGICAL_W,
   PRESETS,
-  generateSetId,
+  generateId,
   hexToRgb,
   parsePaperKey,
   toSetSnapshot,
@@ -87,6 +88,16 @@ export function useDebossStudio(
   // once on mount with a throwaway file so the button simply doesn't render where it
   // can't work (desktop, unsupported browsers), rather than showing a dead end.
   const [canShareImage, setCanShareImage] = useState(false);
+  // Which text block (if any) is selected (shows a selection outline + a
+  // delete control) and which, if any, is actively focused for in-place
+  // editing (a block can only be editingBlockId if it's also
+  // selectedBlockId). Live here (not local to PreviewStage/
+  // CanvasTextOverlay) because the render loop below needs editingBlockId
+  // to suppress that ONE block's debossed render: this hook owns ALL
+  // interactive state that affects what gets drawn. Never read by
+  // buildExportCanvas, so export is unaffected regardless of live editing.
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -101,13 +112,22 @@ export function useDebossStudio(
   const customSetsLoadedRef = useRef(false);
   const brandingLoadedRef = useRef(false);
 
-  // Latest active-example id, read by setText without adding it as a dependency.
+  // Latest active-example id, read by updateTextBlock without adding it as a dependency.
   const activeExampleRef = useRef(activeExample);
   activeExampleRef.current = activeExample;
 
   const fontsReadyRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Latest editing block id for the render loop, without re-creating renderPreview.
+  const editingBlockIdRef = useRef(editingBlockId);
+  editingBlockIdRef.current = editingBlockId;
+
+  // Latest selected block id, read by addTextBlock (new block copies its
+  // style) without adding it as a dependency.
+  const selectedBlockIdRef = useRef(selectedBlockId);
+  selectedBlockIdRef.current = selectedBlockId;
 
   /* ------------------------------------------------------------------
      Preview rendering (debounced to one paint per animation frame)
@@ -129,7 +149,7 @@ export function useDebossStudio(
     const layout = computeLayout(s, logicalW);
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_PREVIEW_DPR);
 
-    drawScene(canvas, s, layout, dpr, s.transparent);
+    drawScene(canvas, s, layout, dpr, s.transparent, editingBlockIdRef.current);
 
     // Present at logical CSS size so it stays crisp but fits the stage.
     canvas.style.width = `${layout.logicalW}px`;
@@ -141,10 +161,12 @@ export function useDebossStudio(
     rafRef.current = requestAnimationFrame(renderPreview);
   }, [renderPreview]);
 
-  // Re-render whenever any state changes.
+  // Re-render whenever any state changes, or editing starts/stops (toggling
+  // editingBlockId doesn't touch DebossState, so it needs its own dependency
+  // to trigger the suppress/restore repaint).
   useEffect(() => {
     scheduleRender();
-  }, [state, scheduleRender]);
+  }, [state, editingBlockId, scheduleRender]);
 
   /* ------------------------------------------------------------------
      Font loading: first paint waits for all three faces
@@ -153,16 +175,16 @@ export function useDebossStudio(
     let cancelled = false;
     (async () => {
       await Promise.all([
-        ensureFont("Noto Nastaliq Urdu", DEFAULT_STATE.fontSize),
-        ensureFont("Gulzar", DEFAULT_STATE.fontSize),
-        ensureFont("Noto Naskh Arabic", DEFAULT_STATE.fontSize),
-        ensureFont("Playfair Display", DEFAULT_STATE.fontSize),
+        ensureFont("Noto Nastaliq Urdu", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Gulzar", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Noto Naskh Arabic", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Playfair Display", DEFAULT_TEXT_BLOCK.fontSize),
         // Real italic is a separate font resource from the upright weight
         // range above (see FONT_CAPABILITIES, layout.tsx's Google Fonts
         // URL): preload it too, so a first italic toggle doesn't briefly
         // fall back to a synthesized slant while it loads.
-        ensureFont("Playfair Display", DEFAULT_STATE.fontSize, "italic"),
-        ensureFont("Noto Serif Devanagari", DEFAULT_STATE.fontSize),
+        ensureFont("Playfair Display", DEFAULT_TEXT_BLOCK.fontSize, "italic"),
+        ensureFont("Noto Serif Devanagari", DEFAULT_TEXT_BLOCK.fontSize),
         document.fonts.ready,
       ]);
       if (cancelled) return;
@@ -385,21 +407,55 @@ export function useDebossStudio(
     );
   }, [router]);
 
-  const setText = useCallback((text: string) => {
-    // A gallery example pins a specific text; retyping breaks it. A preset
-    // or custom set excludes text by design, so this never touches those.
+  // A gallery example pins its exact blocks; editing any of them (text,
+  // style, or position) breaks that pin, exactly like retyping used to.
+  // A preset or custom set excludes textBlocks by design (see CustomSet's
+  // Omit), so this never touches those.
+  const invalidateExample = useCallback(() => {
     if (activeExampleRef.current) {
       setActiveExample(null);
       clearExampleFromUrl();
     }
-    // Length guard: prevents pathological inputs from freezing the canvas.
-    setState((s) => ({ ...s, text: text.slice(0, MAX_TEXT_LENGTH) }));
   }, [clearExampleFromUrl]);
+
+  /** Generic per-block patch: backs block text, alignment, letter spacing, and line height. Font goes through setBlockFont instead (needs to await ensureFont); position through setBlockPosition (needs clamping). */
+  const updateTextBlock = useCallback((id: string, patch: Partial<TextBlock>) => {
+    invalidateExample();
+    setState((s) => ({
+      ...s,
+      textBlocks: s.textBlocks.map((b) => (b.id === id ? { ...b, ...patch } : b)),
+    }));
+  }, [invalidateExample]);
+
+  const setBlockFont = useCallback(async (id: string, font: FontFamily) => {
+    invalidateExample();
+    setState((s) => ({
+      ...s,
+      textBlocks: s.textBlocks.map((b) => (b.id === id ? { ...b, font } : b)),
+    }));
+    const size = stateRef.current.textBlocks.find((b) => b.id === id)?.fontSize
+      ?? DEFAULT_TEXT_BLOCK.fontSize;
+    await ensureFont(font, size);
+    // ensureFont may resolve after React's paint; force a fresh frame.
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(renderPreview);
+  }, [renderPreview, invalidateExample]);
+
+  /** Repositioning a block is orthogonal to "the look," like branding position: no preset/set invalidation beyond the example-pin exception above, no persistence (position is per-document, resets to centered on a fresh document/example/preset like block text itself). */
+  const setBlockPosition = useCallback((id: string, x: number, y: number) => {
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+    setState((s) => ({
+      ...s,
+      textBlocks: s.textBlocks.map((b) =>
+        b.id === id ? { ...b, textAnchorX: clamp(x), textAnchorY: clamp(y) } : b
+      ),
+    }));
+  }, []);
 
   // Branding is personal metadata orthogonal to "the look": unlike every
   // other mutator below, it deliberately does NOT clear activePreset/
   // activeCustomSet/activeExample or touch the deep-link URL, the same
-  // exception already granted to setText.
+  // exception already granted to block text/style/position above.
   const setBrandingText = useCallback((text: string) => {
     setState((s) => ({ ...s, brandingText: text.slice(0, MAX_BRANDING_LENGTH) }));
   }, []);
@@ -416,24 +472,6 @@ export function useDebossStudio(
     clearDeepLinkFromUrl();
     setState((s) => ({ ...s, [id]: value }));
   }, [clearDeepLinkFromUrl]);
-
-  const setAlign = useCallback((align: TextAlign) => {
-    setActiveCustomSet(null);
-    setActiveExample(null);
-    clearExampleFromUrl();
-    setState((s) => ({ ...s, align }));
-  }, [clearExampleFromUrl]);
-
-  const setFont = useCallback(async (font: FontFamily) => {
-    setActiveCustomSet(null);
-    setActiveExample(null);
-    clearExampleFromUrl();
-    setState((s) => ({ ...s, font }));
-    await ensureFont(font, stateRef.current.fontSize);
-    // ensureFont may resolve after React's paint; force a fresh frame.
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(renderPreview);
-  }, [renderPreview, clearExampleFromUrl]);
 
   const setPaper = useCallback((key: string) => {
     setActivePreset(null);
@@ -510,6 +548,41 @@ export function useDebossStudio(
   }, []);
 
   /* ------------------------------------------------------------------
+     Text block actions: add/delete a layer on the canvas
+     ------------------------------------------------------------------ */
+  /** Creates a new block at the given normalized position, copying the selected (or first) block's style so new text tends to match the last one touched; capped at MAX_TEXT_BLOCKS. Returns "" (and flashes a hint) if the cap is hit. */
+  const addTextBlock = useCallback((x: number, y: number): string => {
+    if (stateRef.current.textBlocks.length >= MAX_TEXT_BLOCKS) {
+      flashHint(`Block limit reached (${MAX_TEXT_BLOCKS}), delete one first`);
+      return "";
+    }
+    invalidateExample();
+    const source =
+      stateRef.current.textBlocks.find((b) => b.id === selectedBlockIdRef.current)
+      ?? stateRef.current.textBlocks[0];
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+    const id = generateId();
+    const newBlock: TextBlock = {
+      ...(source ?? DEFAULT_TEXT_BLOCK),
+      id,
+      text: "",
+      textAnchorX: clamp(x),
+      textAnchorY: clamp(y),
+    };
+    setState((s) => ({ ...s, textBlocks: [...s.textBlocks, newBlock] }));
+    setSelectedBlockId(id);
+    setEditingBlockId(id);
+    return id;
+  }, [invalidateExample, flashHint]);
+
+  /** Removes a block; clears selection/editing if either pointed at it. */
+  const deleteTextBlock = useCallback((id: string) => {
+    setState((s) => ({ ...s, textBlocks: s.textBlocks.filter((b) => b.id !== id) }));
+    setSelectedBlockId((cur) => (cur === id ? null : cur));
+    setEditingBlockId((cur) => (cur === id ? null : cur));
+  }, []);
+
+  /* ------------------------------------------------------------------
      Custom set actions: save/apply/delete a user-named full snapshot
      (everything but the typed text). Kept separate from applyPreset:
      a Set restores font/align/aspect/tint too, a Preset never does.
@@ -523,7 +596,7 @@ export function useDebossStudio(
       return false;
     }
     const newSet: CustomSet = {
-      id: generateSetId(),
+      id: generateId(),
       name: trimmed,
       createdAt: Date.now(),
       state: toSetSnapshot(stateRef.current),
@@ -535,7 +608,12 @@ export function useDebossStudio(
     return true;
   }, [flashHint]);
 
-  const applyCustomSet = useCallback(async (id: string) => {
+  // No font/ensureFont dance needed here any more: a CustomSet excludes
+  // textBlocks entirely (font lives per-block now, not something a single
+  // Set can sensibly restore across N independently-styled blocks), so
+  // applying one only ever touches document-level fields already covered
+  // by the normal render-scheduling effect.
+  const applyCustomSet = useCallback((id: string) => {
     const set = customSetsRef.current.find((x) => x.id === id);
     if (!set) return;
     setActivePreset(null);
@@ -543,10 +621,7 @@ export function useDebossStudio(
     setActiveExample(null);
     clearDeepLinkFromUrl();
     setState((s) => ({ ...s, ...set.state }));
-    await ensureFont(set.state.font, set.state.fontSize);
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(renderPreview);
-  }, [renderPreview, clearDeepLinkFromUrl]);
+  }, [clearDeepLinkFromUrl]);
 
   const deleteCustomSet = useCallback((id: string) => {
     setCustomSets((sets) => sets.filter((x) => x.id !== id));
@@ -648,14 +723,20 @@ export function useDebossStudio(
     isCopying,
     isSharing,
     canShareImage,
+    selectedBlockId,
+    setSelectedBlockId,
+    editingBlockId,
+    setEditingBlockId,
     canvasRef,
     stageRef,
-    setText,
+    updateTextBlock,
+    setBlockFont,
+    setBlockPosition,
+    addTextBlock,
+    deleteTextBlock,
     setBrandingText,
     setBrandingPosition,
     setSlider,
-    setAlign,
-    setFont,
     setPaper,
     setTransparent,
     setTint,

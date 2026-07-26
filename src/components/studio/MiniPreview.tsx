@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { DebossState, Layout } from "@/types/deboss";
-import { MAX_PREVIEW_DPR } from "@/lib/deboss/constants";
+import type { DebossState, Layout, SceneLayout, TextBlock } from "@/types/deboss";
+import { DEFAULT_TEXT_BLOCK, MAX_PREVIEW_DPR } from "@/lib/deboss/constants";
 import { drawScene } from "@/lib/deboss/engine";
 import { stripTags } from "@/lib/deboss/richtext";
 
@@ -26,12 +26,15 @@ export function MiniPreview({ state }: { state: DebossState }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const char = [...stripTags(state.text).trim()][0] ?? "A";
+    // Only the FIRST block informs this single-glyph swatch: showing every
+    // block's own glyph would defeat the "reduce to one simple mark" point
+    // of this coach-mark at 76x76px.
+    const primary = state.textBlocks[0] ?? DEFAULT_TEXT_BLOCK;
+    const char = [...stripTags(primary.text).trim()][0] ?? "A";
+    const miniBlock: TextBlock = { ...primary, text: char, align: "center", fontSize: 48 };
     const miniState: DebossState = {
       ...state,
-      text: char,
-      align: "center",
-      fontSize: 48,
+      textBlocks: [miniBlock],
       // The watermark would be cluttered/meaningless at this size, same
       // reasoning as reducing the main text down to a single glyph.
       brandingText: "",
@@ -42,9 +45,14 @@ export function MiniPreview({ state }: { state: DebossState }) {
       logicalW: MINI_SIZE,
       logicalH: MINI_SIZE,
     };
+    const sceneLayout: SceneLayout = {
+      logicalW: MINI_SIZE,
+      logicalH: MINI_SIZE,
+      blocks: [{ id: miniBlock.id, layout }],
+    };
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_PREVIEW_DPR);
 
-    drawScene(canvas, miniState, layout, dpr, miniState.transparent);
+    drawScene(canvas, miniState, sceneLayout, dpr, miniState.transparent);
     canvas.style.width = `${MINI_SIZE}px`;
     canvas.style.height = `${MINI_SIZE}px`;
   }, [state]);

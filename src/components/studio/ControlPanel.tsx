@@ -1,7 +1,6 @@
 "use client";
 
 import { Layers, Plus, SlidersHorizontal, Star, Type as TypeIcon, X } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
 import type { AspectId, FontFamily, TextAlign } from "@/types/deboss";
@@ -10,7 +9,6 @@ import {
   FONT_OPTIONS,
   MAX_BRANDING_LENGTH,
   MAX_SET_NAME_LENGTH,
-  MAX_TEXT_LENGTH,
   PAPER_TONES,
   PRESETS,
   SLIDER_DEFS,
@@ -19,29 +17,6 @@ import {
 } from "@/lib/deboss/constants";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SectionSheet } from "./SectionSheet";
-
-/**
- * Tiptap/ProseMirror are a meaningful chunk of JS for a control that isn't
- * needed until the user actually interacts with text formatting; loading it
- * via next/dynamic keeps those bytes out of the page's tracked First Load
- * JS (see docs/SEO-PLAN.md's guardrail). ssr:false since this whole panel
- * only ever renders client-side anyway (Studio is the "use client" island).
- */
-const RichTextEditor = dynamic(
-  () => import("./RichTextEditor").then((m) => m.RichTextEditor),
-  {
-    ssr: false,
-    loading: () => (
-      <textarea
-        className="rich-text-input rich-text-input-loading"
-        disabled
-        aria-label="Text (loading editor)"
-        value="Loading editor…"
-        readOnly
-      />
-    ),
-  },
-);
 
 /** Icon sizes for the "My sets" chips: star sits inline, delete is a small floating badge. */
 const CHIP_STAR_ICON_SIZE = 15;
@@ -77,13 +52,12 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     customSets,
     activeCustomSet,
     defaultSetId,
-    textRevision,
     paperKey,
-    setText,
+    selectedBlockId,
+    updateTextBlock,
+    setBlockFont,
     setBrandingText,
     setSlider,
-    setAlign,
-    setFont,
     setPaper,
     setTint,
     setShadowColor,
@@ -94,6 +68,11 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     deleteCustomSet,
     toggleDefaultSet,
   } = studio;
+
+  // Font/Alignment/Letter spacing/Line height (below) edit whichever block
+  // is selected on the canvas, not a document-wide default: Canva's own
+  // property panel works the same way, always reflecting the active object.
+  const selectedBlock = state.textBlocks.find((b) => b.id === selectedBlockId) ?? null;
 
   // UI-only: whether the "name + save" form is expanded, and which set
   // (if any) is awaiting delete confirmation. Neither belongs in DebossState.
@@ -114,18 +93,9 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
 
   return (
     <aside className="panel" aria-label="Controls">
-      {/* Text input */}
-      <section className="group">
-        <span className="group-label">Text</span>
-        <RichTextEditor
-          value={state.text}
-          onChange={setText}
-          font={state.font}
-          baseSize={state.fontSize}
-          maxLength={MAX_TEXT_LENGTH}
-          externalRevision={textRevision}
-        />
-      </section>
+      {/* Text is edited directly on the canvas now (CanvasTextOverlay.tsx,
+          PreviewStage.tsx): click the text, or use the "Edit text" button in
+          the stage bar. No sidebar text box any more. */}
 
       {/* Mobile-only menu: opens the sections below as bottom sheets. Hidden
           on wide screens, where those sections already render inline. */}
@@ -337,13 +307,21 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
       <section className="group">
         <span className="group-label">Type &amp; paper</span>
 
+        {!selectedBlock && (
+          <p className="field-hint">Select a text block on the canvas to edit its style.</p>
+        )}
+
         <div className="field-row">
           <label htmlFor="font">Font</label>
           <select
             id="font"
-            value={state.font}
-            onChange={(e) => void setFont(e.target.value as FontFamily)}
+            disabled={!selectedBlock}
+            value={selectedBlock?.font ?? ""}
+            onChange={(e) => {
+              if (selectedBlock) void setBlockFont(selectedBlock.id, e.target.value as FontFamily);
+            }}
           >
+            {!selectedBlock && <option value="" />}
             {FONT_OPTIONS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
@@ -359,9 +337,10 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
               <button
                 key={a.value}
                 type="button"
-                className={`seg-btn${state.align === a.value ? " is-active" : ""}`}
-                aria-pressed={state.align === a.value}
-                onClick={() => setAlign(a.value)}
+                className={`seg-btn${selectedBlock?.align === a.value ? " is-active" : ""}`}
+                aria-pressed={selectedBlock?.align === a.value}
+                disabled={!selectedBlock}
+                onClick={() => selectedBlock && updateTextBlock(selectedBlock.id, { align: a.value })}
               >
                 {a.label}
               </button>
@@ -373,7 +352,9 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
           <div className="slider" key={def.id}>
             <div className="slider-head">
               <label htmlFor={def.id}>{def.label}</label>
-              <output htmlFor={def.id}>{formatSliderValue(state[def.id])}</output>
+              <output htmlFor={def.id}>
+                {selectedBlock ? formatSliderValue(selectedBlock[def.id]) : "-"}
+              </output>
             </div>
             <input
               type="range"
@@ -381,8 +362,11 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
               min={def.min}
               max={def.max}
               step={def.step}
-              value={state[def.id]}
-              onChange={(e) => setSlider(def.id, Number(e.target.value))}
+              disabled={!selectedBlock}
+              value={selectedBlock?.[def.id] ?? def.min}
+              onChange={(e) => {
+                if (selectedBlock) updateTextBlock(selectedBlock.id, { [def.id]: Number(e.target.value) });
+              }}
             />
           </div>
         ))}

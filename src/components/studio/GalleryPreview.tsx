@@ -45,7 +45,10 @@ export function GalleryPreview({
     if (!canvas) return;
 
     (async () => {
-      await Promise.all([ensureFont(state.font, state.fontSize), document.fonts.ready]);
+      await Promise.all([
+        ...state.textBlocks.map((block) => ensureFont(block.font, block.fontSize)),
+        document.fonts.ready,
+      ]);
       if (cancelled) return;
 
       const layout = computeLayout(state, width);

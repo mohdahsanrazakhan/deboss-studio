@@ -44,9 +44,10 @@ export async function generateMetadata({
   };
 }
 
-/** Human-readable font/paper/aspect labels for the spec list, from the same option lists ControlPanel.tsx uses. */
+/** Human-readable font/paper/aspect labels for the spec list, from the same option lists ControlPanel.tsx uses. Font comes from the primary (first) text block, same convention "auto" aspect sizing uses. */
 function describeState(state: DebossState) {
-  const font = FONT_OPTIONS.find((f) => f.value === state.font)?.label ?? state.font;
+  const primaryFont = state.textBlocks[0]?.font;
+  const font = FONT_OPTIONS.find((f) => f.value === primaryFont)?.label ?? primaryFont ?? "";
   const paperKey = `${state.paper.r},${state.paper.g},${state.paper.b}`;
   const paper = PAPER_TONES.find((p) => p.key === paperKey)?.label ?? "Custom";
   const aspect = ASPECT_OPTIONS.find((a) => a.value === state.aspect)?.label ?? state.aspect;

@@ -7,6 +7,8 @@ import type {
   PaperTone,
   Preset,
   SliderDef,
+  TextBlock,
+  TextBlockSliderDef,
 } from "@/types/deboss";
 
 /** Download resolution multiplier. */
@@ -34,6 +36,10 @@ export const DEFAULT_SET_STORAGE_KEY = "textDebossStudio.defaultSetId";
 export const MAX_SET_NAME_LENGTH = 40;
 /** Cap on saved custom sets: keeps the list usable and storage bounded. */
 export const MAX_CUSTOM_SETS = 24;
+/** Cap on text blocks per document: keeps the canvas usable and the render loop bounded. */
+export const MAX_TEXT_BLOCKS = 20;
+/** Fixed (not randomly generated) id for the sole block of a fresh/migrated document, so DEFAULT_STATE stays deterministic. Runtime-created blocks use generateId() instead. */
+export const DEFAULT_BLOCK_ID = "default";
 /** Filename used for both the download and native-share export. */
 export const EXPORT_FILENAME = "text-deboss.png";
 /** Max length for the branding watermark text (e.g. an Instagram handle). */
@@ -60,10 +66,27 @@ export const BRANDING_PAPER_LUMINANCE_THRESHOLD = 140;
 
 export const DEFAULT_TEXT = "بسمِ اللہ\nالرحمٰن الرحیم";
 
-export const DEFAULT_STATE: DebossState = {
+/**
+ * A plain named constant (not DEFAULT_STATE.textBlocks[0]) specifically so
+ * GALLERY_EXAMPLES can spread it with `noUncheckedIndexedAccess` on:
+ * indexing an array always types as `T | undefined` under that flag, which
+ * would make every `{ ...DEFAULT_STATE.textBlocks[0], font: "..." }` below
+ * fail to satisfy `TextBlock`.
+ */
+export const DEFAULT_TEXT_BLOCK: TextBlock = {
+  id: DEFAULT_BLOCK_ID,
   text: DEFAULT_TEXT,
   font: "Noto Nastaliq Urdu",
   align: "center",
+  fontSize: 72,
+  letterSpacing: 0,
+  lineHeightFactor: LINE_FACTOR,
+  textAnchorX: 0.5,
+  textAnchorY: 0.5,
+};
+
+export const DEFAULT_STATE: DebossState = {
+  textBlocks: [DEFAULT_TEXT_BLOCK],
   transparent: false,
   paper: { r: 244, g: 240, b: 232 }, // ivory
   depth: 3,
@@ -71,13 +94,10 @@ export const DEFAULT_STATE: DebossState = {
   highlight: 0.7,
   blur: 3,
   texture: 0.35,
-  fontSize: 72,
   tint: { r: 60, g: 50, b: 38 }, // #3c3226
   tintStrength: 0,
   shadowColor: { r: 64, g: 52, b: 38 }, // #403426
   aspect: "auto",
-  letterSpacing: 0,
-  lineHeightFactor: LINE_FACTOR,
   brandingText: "",
   brandingX: 0.86,
   brandingY: 0.9,
@@ -134,11 +154,12 @@ export const SLIDER_DEFS: SliderDef[] = [
 
 /**
  * Typography sliders shown in the "Type & Paper" section, not "Engraving":
- * these are text-layout parameters (spacing/leading), not debossing-effect
- * parameters, even though they use the exact same `setSlider` mutator and
- * generic slider markup as SLIDER_DEFS above.
+ * these are text-layout parameters (spacing/leading) that live on the
+ * SELECTED TextBlock, not shared document-level state like SLIDER_DEFS
+ * above, so they go through updateTextBlock (useDebossStudio.ts), not the
+ * generic setSlider.
  */
-export const TYPE_SLIDER_DEFS: SliderDef[] = [
+export const TYPE_SLIDER_DEFS: TextBlockSliderDef[] = [
   { id: "letterSpacing", label: "Letter spacing", min: -5, max: 20, step: 0.5 },
   { id: "lineHeightFactor", label: "Line height", min: 1, max: 3, step: 0.05 },
 ];
@@ -277,7 +298,7 @@ export const GALLERY_EXAMPLES: GalleryExample[] = [
     ],
     state: {
       ...DEFAULT_STATE,
-      font: "Noto Naskh Arabic",
+      textBlocks: [{ ...DEFAULT_TEXT_BLOCK, font: "Noto Naskh Arabic" }],
       paper: { r: 24, g: 22, b: 20 },
       depth: 2.40,
       shadow: 0.70,
@@ -314,15 +335,18 @@ export const GALLERY_EXAMPLES: GalleryExample[] = [
     ],
     state: {
       ...DEFAULT_STATE,
-      text: "You Are\nCordially Invited",
-      font: "Playfair Display",
+      textBlocks: [{
+        ...DEFAULT_TEXT_BLOCK,
+        text: "You Are\nCordially Invited",
+        font: "Playfair Display",
+        fontSize: 40,
+      }],
       paper: { r: 248, g: 247, b: 244 },
       depth: 3.4,
       shadow: 0.62,
       highlight: 0.48,
       blur: 1.6,
       texture: 0.18,
-      fontSize: 40,
       aspect: "4:5",
     },
   },
@@ -351,8 +375,7 @@ export const GALLERY_EXAMPLES: GalleryExample[] = [
     ],
     state: {
       ...DEFAULT_STATE,
-      text: "Thank\nYou",
-      font: "Playfair Display",
+      textBlocks: [{ ...DEFAULT_TEXT_BLOCK, text: "Thank\nYou", font: "Playfair Display" }],
       paper: { r: 240, g: 232, b: 218 },
       depth: 2.2,
       shadow: 0.4,
@@ -390,21 +413,19 @@ export function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): stri
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-/** Strip `text` and the branding fields from a DebossState to build a CustomSet snapshot (a Set is a look, not a message, and branding is personal metadata orthogonal to both). */
+/** Strip `textBlocks` and the branding fields from a DebossState to build a CustomSet snapshot (a Set is a reusable look, not pinned content, styling, position, or personal branding metadata). */
 export function toSetSnapshot(s: DebossState): CustomSet["state"] {
   const {
-    font, align, transparent, paper, depth, shadow, highlight, blur,
-    texture, fontSize, tint, tintStrength, shadowColor, aspect,
-    letterSpacing, lineHeightFactor,
+    transparent, paper, depth, shadow, highlight, blur,
+    texture, tint, tintStrength, shadowColor, aspect,
   } = s;
   return {
-    font, align, transparent, paper, depth, shadow, highlight, blur,
-    texture, fontSize, tint, tintStrength, shadowColor, aspect,
-    letterSpacing, lineHeightFactor,
+    transparent, paper, depth, shadow, highlight, blur,
+    texture, tint, tintStrength, shadowColor, aspect,
   };
 }
 
-/** Generate a locally-unique id for a new CustomSet. */
-export function generateSetId(): string {
+/** Generate a locally-unique id, for a new CustomSet or a new TextBlock. */
+export function generateId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

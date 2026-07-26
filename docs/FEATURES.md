@@ -5,6 +5,8 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 ## Text & typography
 
 - [x] Script-agnostic rich-text editor with automatic RTL/LTR direction detection (`detectTextDirection`) and a Urdu default text (بسمِ اللہ / الرحمٰن الرحیم)
+- [x] Multiple independent text blocks on one canvas (Canva-style layers), each with its own content, font, alignment, size, letter spacing, line height, and position. Edited directly in place on the canvas, not a sidebar box: click a rendered block to select and open a true in-place editor pixel-matched to the debossed rendering, click away (or Escape) to commit; click genuinely empty canvas to create a new block there, copying the currently-selected block's style; a keyboard-focusable "Edit text" button in the stage bar opens the same editor for the selected (or first) block as an accessibility fallback. Any block can be dragged anywhere on the canvas as one unit (clamped fully inside), disambiguated from editing by a small movement threshold rather than a separate select step. A selected, non-editing block shows a persistent outline and a small delete button; Delete/Backspace also removes it. While a block is being edited, only that block's debossed render is suppressed (a flat overlay stands in for it); every other block, the paper, and the branding watermark keep rendering normally underneath. Capped at `MAX_TEXT_BLOCKS` (20) with a hint when the limit is hit. A document with a single block at the default centered position renders identically to the original single-text app
+
 - [x] Hard line breaks honoured; automatic direction-aware word wrap to canvas width
 - [x] Five fonts: Noto Nastaliq Urdu (default), Gulzar, Noto Naskh Arabic, Playfair Display, Noto Serif Devanagari; loaded and awaited before first canvas paint
 - [x] Per-selection rich-text formatting: select any text and toggle Bold / Italic / Underline, or bump its size with A-/A+ (replaces the old single global font-size slider). Bold is disabled per font where there's no real loaded bold face (Gulzar only), to avoid a browser-synthesized ("faux") weight on that calligraphic script; Italic is available for every font (only Playfair Display has a real italic face, every other font renders a browser-synthesized oblique slant). A style change is snapped to the nearest word boundary for Arabic-script fonts, since a boundary landing mid-word would break letter-joining
@@ -30,11 +32,11 @@ Complete feature list, mapped 1:1 against the original vanilla app. Nothing here
 
 ## My sets (user-saved, distinct from Presets)
 
-- [x] Save the *entire* current look (font, alignment, aspect, engraving params, paper, tint, tint strength, shadow colour) under a name, excluding the typed text
+- [x] Save the current shared/document-level look (aspect, engraving params, paper, tint, tint strength, shadow colour) under a name, excluding the text blocks entirely (font/alignment/spacing now live per block, so a single Set can't map onto N independently-styled blocks)
 - [x] Persisted client-side in `localStorage` (`CUSTOM_SETS_STORAGE_KEY`); survives reloads, never sent to a server
 - [x] Apply a saved set with one click; delete (with confirm dialog) via the × on its chip
-- [x] Star one set as the **default on load** (★ on its chip): its style (not its text) auto-applies on every future visit, before the first canvas paint so there's no flash of the built-in look; persisted separately (`DEFAULT_SET_STORAGE_KEY`); deleting the default set clears the default too
-- [x] Any manual tweak (slider, font, align, paper, tint, aspect, transparency) clears the active set chip, same as Presets
+- [x] Star one set as the **default on load** (★ on its chip): its style (not any text block) auto-applies on every future visit, before the first canvas paint so there's no flash of the built-in look; persisted separately (`DEFAULT_SET_STORAGE_KEY`); deleting the default set clears the default too
+- [x] Any manual tweak (slider, a block's font/align/spacing, paper, tint, aspect, transparency) clears the active set chip, same as Presets
 - [x] Capped at `MAX_CUSTOM_SETS` (24) with a hint when the limit is hit; name capped at `MAX_SET_NAME_LENGTH` (40 chars)
 
 ## Paper
