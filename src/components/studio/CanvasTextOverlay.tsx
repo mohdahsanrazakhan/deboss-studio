@@ -104,9 +104,16 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
       if (e.key === "Escape") setEditingBlockId(null);
     };
     const onPointerDownOutside = (e: PointerEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setEditingBlockId(null);
-      }
+      const target = e.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      // The floating formatting toolbar is portaled to document.body (see
+      // RichTextEditor.tsx), so it's never a DOM descendant of this block's
+      // own edit container; without this check every tap on it reads as an
+      // "outside" click and exits edit mode before the format action can
+      // ever run, which shipped as a real bug caught while fixing mobile
+      // formatting (selection appeared to just vanish on tap).
+      if ((target as HTMLElement).closest?.(".rich-text-toolbar")) return;
+      setEditingBlockId(null);
     };
     window.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDownOutside);

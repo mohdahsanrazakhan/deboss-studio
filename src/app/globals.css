@@ -286,6 +286,10 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: background .15s, color .15s, opacity .15s;
+  /* Suppresses the tap-and-hold gray flash and the ~300ms double-tap-zoom
+     delay on touch, on top of the min-width/height bump below. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .rich-text-btn:hover:not(:disabled) {
   background: rgba(124,111,90,.1);
@@ -298,6 +302,77 @@ body {
 .rich-text-btn:disabled {
   opacity: .35;
   cursor: not-allowed;
+}
+
+/* Font-size pill stepper: -/[value]/+ in one rounded, clipped row so the
+   middle input's own default text-input chrome (border, background) never
+   shows, only the pill's own. */
+.rich-text-size-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: #fff;
+}
+.rich-text-size-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background .15s, color .15s, opacity .15s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.rich-text-size-btn:hover:not(:disabled) {
+  background: rgba(124,111,90,.1);
+  color: var(--ink);
+}
+.rich-text-size-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.rich-text-size-input {
+  width: 34px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  background: transparent;
+  text-align: center;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.rich-text-size-input:focus {
+  outline: none;
+  background: rgba(124,111,90,.08);
+}
+.rich-text-size-input:disabled {
+  opacity: .35;
+}
+
+/* Finger-friendly touch targets (WCAG 2.5.5 / Apple HIG's 44x44px
+   minimum), scoped to touch-capable devices via `pointer: coarse` so the
+   desktop toolbar stays compact; a device with both a mouse and a
+   touchscreen gets the roomier size too, matching whichever input it
+   advertises as primary. */
+@media (pointer: coarse) {
+  .rich-text-toolbar { gap: 6px; padding: 8px; }
+  .rich-text-btn { min-width: 44px; height: 44px; font-size: .95rem; }
+  .rich-text-toolbar-divider { height: 28px; }
+  /* +2px over the 44px target: .rich-text-size-btn fills the stepper's
+     CONTENT box (align-items: stretch), which is the container's own
+     border-box height minus its 1px top+bottom border, so the container
+     needs 46px for children to actually stretch to a 44px-tall hit area. */
+  .rich-text-size-stepper { height: 46px; }
+  .rich-text-size-btn { width: 44px; }
+  .rich-text-size-input { width: 46px; font-size: .95rem; }
 }
 
 /* Presets */
