@@ -1225,6 +1225,27 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
     /* Shows through only if "Transparent background" is on, same trick as .stage-inner. */
     background: repeating-conic-gradient(#eeeae1 0% 25%, #f7f4ee 0% 50%) 0 0 / 14px 14px;
   }
+
+  /* The floating formatting toolbar docks as a full-width bar at the top
+     of the screen instead of floating near the block (RichTextEditor.tsx
+     skips its own inline top/left when isMobileDocked, matching this same
+     max-width:880px breakpoint): small screens don't have room to spare
+     for a floating pill, and a block near the top edge would otherwise
+     constantly hit the flip-below case. Same z-index (46) as the floating
+     variant; ControlPanel.tsx's mobile-menu deselects the block before
+     opening a sheet, so this never has to compete with .mini-preview or
+     .section-modal-panel for the same space. */
+  .rich-text-toolbar.is-docked {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    border-radius: 0;
+    border-width: 0 0 1px;
+  }
 }
 
 @keyframes sheet-slide-up {

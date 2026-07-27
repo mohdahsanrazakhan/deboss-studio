@@ -11,9 +11,10 @@ import type { Layout, TextBlock } from "@/types/deboss";
 
 /**
  * Loaded via next/dynamic so Tiptap's bytes stay out of the tracked First
- * Load JS (docs/SEO-PLAN.md's guardrail) until the user actually clicks to
- * edit: mounted only while a block is being edited, unlike the old sidebar
- * box that loaded it unconditionally on first paint.
+ * Load JS (docs/SEO-PLAN.md's guardrail) until the user actually clicks a
+ * block: mounted while that block is SELECTED (both the select-only and
+ * the actively-editing sub-state, see BlockOverlay below), unlike the old
+ * sidebar box that loaded it unconditionally on first paint.
  */
 const RichTextEditor = dynamic(
   () => import("./RichTextEditor").then((m) => m.RichTextEditor),
@@ -90,18 +91,32 @@ type BlockOverlayProps = {
   isEditing: boolean;
 };
 
-/** One block's idle hit-region (+ selection outline/delete control) or edit container. Click (no drag) selects + edits; drag selects + moves without editing. */
+/**
+ * One block's idle hit-region (+ selection outline/delete control), and/or
+ * its RichTextEditor wrapper, in a Canva-style two-step gesture: click
+ * (no drag) an UNSELECTED block to select it (bounding box, no cursor);
+ * click an ALREADY-selected block to enter character-cursor editing; drag
+ * selects + moves without editing, at any point. RichTextEditor itself
+ * mounts whenever `isSelected` (both sub-states), not just `isEditing` —
+ * see its own file for why (it backs the formatting toolbar, which must
+ * work on the whole block without a character selection).
+ */
 function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditing }: BlockOverlayProps) {
   const { state, canvasRef, textRevision, updateTextBlock, setBlockPosition, deleteTextBlock, setSelectedBlockId, setEditingBlockId } = studio;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Exit editing on Escape or a pointerdown outside this block's own editor+toolbar.
+  // Fully deselect (Escape) or dismiss (pointerdown outside) whenever this
+  // block is selected, not only while actively editing: the formatting
+  // toolbar is visible in both sub-states now, so both need a way to hide it.
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isSelected) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setEditingBlockId(null);
+      if (e.key === "Escape") {
+        setSelectedBlockId(null);
+        setEditingBlockId(null);
+      }
     };
     const onPointerDownOutside = (e: PointerEvent) => {
       const target = e.target as Node;
@@ -109,11 +124,21 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
       // The floating formatting toolbar is portaled to document.body (see
       // RichTextEditor.tsx), so it's never a DOM descendant of this block's
       // own edit container; without this check every tap on it reads as an
-      // "outside" click and exits edit mode before the format action can
-      // ever run, which shipped as a real bug caught while fixing mobile
+      // "outside" click and dismisses before the format action can ever
+      // run, which shipped as a real bug caught while fixing mobile
       // formatting (selection appeared to just vanish on tap).
       if ((target as HTMLElement).closest?.(".rich-text-toolbar")) return;
-      setEditingBlockId(null);
+      // Functional updaters, not a plain `null`: once selected-not-editing
+      // is the common state (reached by every first click), tapping a
+      // DIFFERENT block B fires both B's own select handler and this
+      // outside-pointerdown listener in the same tick, with no guaranteed
+      // ordering between a raw document listener and React's synthetic
+      // one. A plain `setSelectedBlockId(null)` could land after B's own
+      // `setSelectedBlockId(B.id)` and clobber it; only clearing when the
+      // id still matches THIS block makes it order-independent (same
+      // pattern deleteTextBlock already uses in useDebossStudio.ts).
+      setSelectedBlockId((cur) => (cur === block.id ? null : cur));
+      setEditingBlockId((cur) => (cur === block.id ? null : cur));
     };
     window.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDownOutside);
@@ -121,7 +146,7 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
       window.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDownOutside);
     };
-  }, [isEditing, setEditingBlockId]);
+  }, [isSelected, block.id, setSelectedBlockId, setEditingBlockId]);
 
   // Delete key removes this block, but only while it's selected-not-editing
   // (mid-typing, Delete/Backspace must keep editing text, never the block).
@@ -197,68 +222,98 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
       }
       draggingRef.current = false;
       pointerStartRef.current = null;
-      if (!wasDragging) {
-        setSelectedBlockId(block.id);
+      if (wasDragging) return;
+      // Two-step Canva-style gesture: a click on an unselected block only
+      // selects it (bounding box, no cursor); a click on an ALREADY-selected
+      // block is what enters character-cursor editing. Creating a new block
+      // (addTextBlock) and the "Edit text" accessibility button both bypass
+      // this and jump straight to editing, deliberately unaffected.
+      if (isSelected) {
         setEditingBlockId(block.id);
+      } else {
+        setSelectedBlockId(block.id);
       }
     },
-    [block.id, setSelectedBlockId, setEditingBlockId],
+    [block.id, isSelected, setSelectedBlockId, setEditingBlockId],
   );
 
-  if (isEditing) {
-    // Plain preview colour while typing must adapt to the paper the same
-    // way the branding watermark does: PAPER_TONES includes "Black", and a
-    // fixed dark ink colour would go invisible on it.
-    const overlayClassName = isPaperDark(state.paper)
-      ? "canvas-text-overlay is-dark-paper"
-      : "canvas-text-overlay";
-    return (
-      <div
-        ref={containerRef}
-        className={overlayClassName}
-        style={{ left: editBox.left, top: editBox.top, width: editBox.width, height: editBox.height }}
-      >
-        <RichTextEditor
-          value={block.text}
-          onChange={(text) => updateTextBlock(block.id, { text })}
-          font={block.font}
-          baseSize={block.fontSize}
-          maxLength={MAX_TEXT_LENGTH}
-          externalRevision={textRevision}
-          align={block.align}
-          letterSpacing={block.letterSpacing}
-          lineHeightFactor={block.lineHeightFactor}
-        />
-      </div>
-    );
-  }
+  // Plain preview colour while editing must adapt to the paper the same way
+  // the branding watermark does: PAPER_TONES includes "Black", and a fixed
+  // dark ink colour would go invisible on it. Applied regardless of
+  // isEditing (harmless while invisible) so the class never has to change
+  // mid-transition.
+  const overlayClassName = isPaperDark(state.paper)
+    ? "canvas-text-overlay is-dark-paper"
+    : "canvas-text-overlay";
+  const editBoxStyle = { left: editBox.left, top: editBox.top, width: editBox.width, height: editBox.height };
 
   return (
-    <div
-      className={`canvas-text-hit${isSelected ? " is-selected" : ""}`}
-      style={{ left: contentBox.left, top: contentBox.top, width: contentBox.width, height: contentBox.height }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      aria-hidden="true"
-    >
-      {isSelected && (
-        <button
-          type="button"
-          className="canvas-text-delete"
-          aria-label="Delete text block"
-          title="Delete text block"
-          onPointerDown={(e) => e.stopPropagation()}
-          onPointerUp={(e) => e.stopPropagation()}
-          onPointerCancel={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteTextBlock(block.id);
-          }}
+    // `display: contents` so this wrapper contributes no box of its own
+    // (the hit-region and the editor container below keep positioning
+    // absolutely against .stage-inner exactly as if it weren't here), but
+    // still exists as a real DOM node `containerRef` can point at. Needed
+    // because the two children are otherwise SIBLINGS, not nested: without
+    // a single common ancestor, the outside-pointerdown dismiss check below
+    // could only ever recognize ONE of them as "inside," and shipped as a
+    // real bug where a second click on the block's own hit-region (to
+    // enter editing) read as an outside click and immediately deselected
+    // on pointerdown, before the click could ever register.
+    <div ref={containerRef} style={{ display: "contents" }}>
+      {!isEditing && (
+        <div
+          className={`canvas-text-hit${isSelected ? " is-selected" : ""}`}
+          style={{ left: contentBox.left, top: contentBox.top, width: contentBox.width, height: contentBox.height }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          aria-hidden="true"
         >
-          <X size={12} aria-hidden="true" />
-        </button>
+          {isSelected && (
+            <button
+              type="button"
+              className="canvas-text-delete"
+              aria-label="Delete text block"
+              title="Delete text block"
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onPointerCancel={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteTextBlock(block.id);
+              }}
+            >
+              <X size={12} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      )}
+      {isSelected && (
+        <div
+          className={overlayClassName}
+          // Invisible + non-interactive while merely selected (not yet
+          // editing): RichTextEditor mounts here in BOTH sub-states so its
+          // formatting toolbar has a live editor to back it without a
+          // character selection (see that file), but the flat text overlay
+          // itself must stay hidden until the user clicks again to type,
+          // so the debossed canvas render (unsuppressed in this sub-state)
+          // is what's actually visible.
+          style={isEditing ? editBoxStyle : { ...editBoxStyle, opacity: 0, pointerEvents: "none" }}
+        >
+          <RichTextEditor
+            value={block.text}
+            onChange={(text) => updateTextBlock(block.id, { text })}
+            font={block.font}
+            baseSize={block.fontSize}
+            maxLength={MAX_TEXT_LENGTH}
+            externalRevision={textRevision}
+            align={block.align}
+            letterSpacing={block.letterSpacing}
+            lineHeightFactor={block.lineHeightFactor}
+            isEditing={isEditing}
+            anchorBox={contentBox}
+          />
+        </div>
       )}
     </div>
   );
@@ -268,7 +323,7 @@ export function CanvasTextOverlay({ studio }: { studio: DebossStudio }) {
   const { state, canvasRef, selectedBlockId, setSelectedBlockId, editingBlockId, addTextBlock } = studio;
   const [boxes, setBoxes] = useState<Record<string, { content: Box; edit: Box }>>({});
   const [canvasBox, setCanvasBox] = useState<Box | null>(null);
-  const bgPointerStartRef = useRef<{ x: number; y: number; wasEditing: boolean } | null>(null);
+  const bgPointerStartRef = useRef<{ x: number; y: number; hadActiveBlock: boolean } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -304,8 +359,12 @@ export function CanvasTextOverlay({ studio }: { studio: DebossStudio }) {
 
   const handleBackgroundPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    bgPointerStartRef.current = { x: e.clientX, y: e.clientY, wasEditing: editingBlockId !== null };
-  }, [editingBlockId]);
+    bgPointerStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      hadActiveBlock: selectedBlockId !== null || editingBlockId !== null,
+    };
+  }, [selectedBlockId, editingBlockId]);
 
   const handleBackgroundPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -319,10 +378,14 @@ export function CanvasTextOverlay({ studio }: { studio: DebossStudio }) {
       if (!start) return;
       const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
       if (moved >= DRAG_THRESHOLD_PX) return; // a drag-through over empty canvas: no-op
-      if (start.wasEditing) {
-        // This click's only job was to dismiss the editor that was open
-        // (handled by that block's own outside-pointerdown listener);
-        // don't also spawn a new block from the same gesture.
+      if (start.hadActiveBlock) {
+        // This click's only job was to dismiss whatever was selected or
+        // being edited (handled by that block's own outside-pointerdown
+        // listener); don't also spawn a new block from the same gesture.
+        // Covers BOTH sub-states now, not just editing: selected-not-
+        // editing is the common case reached by every first click under
+        // the two-step model, so this guard is what stops "click empty
+        // canvas to deselect" from also creating a stray empty block.
         return;
       }
       const canvas = canvasRef.current;

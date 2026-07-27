@@ -20,10 +20,17 @@ import { FontSize } from "./FontSizeMark";
 const SIZE_STEP = 1;
 const MIN_SIZE = 8;
 const MAX_SIZE = 400;
-// Gap kept between the floating toolbar and the selected text it's
-// anchored to, and between the toolbar and the viewport edge when
-// clamping/flipping (see recomputeToolbarPosition below).
+// Gap kept between the floating toolbar and the block it's anchored to,
+// and between the toolbar and the viewport edge when clamping/flipping
+// (see recomputeToolbarPosition below).
 const TOOLBAR_MARGIN = 8;
+// Matches globals.css's own primary mobile breakpoint (sidebar -> bottom
+// sheets); the toolbar docks at the top of the screen at the same point,
+// instead of floating near the block.
+const MOBILE_DOCK_QUERY = "(max-width: 880px)";
+
+/** A block's own screen-space box (CanvasTextOverlay.tsx's `Box`, duplicated here rather than imported: that file dynamic-imports this one, and a type-only cross-import back the other way is unnecessary coupling for four numbers). */
+type Rect = { left: number; top: number; width: number; height: number };
 
 type RichTextEditorProps = {
   value: string;
@@ -37,6 +44,10 @@ type RichTextEditorProps = {
   align: TextAlign;
   letterSpacing: number;
   lineHeightFactor: number;
+  /** False = selected-only (formatting targets the whole block, see the mount effect below); true = actively typing (today's exact per-character behavior, unchanged). */
+  isEditing: boolean;
+  /** The block's own content box (CanvasTextOverlay.tsx's computeContentBox), used to anchor the floating toolbar now that it doesn't rely on a character selection existing at all. */
+  anchorBox: Rect;
 };
 
 /** Expands a partial-word selection out to the nearest whitespace on both sides, so a style boundary never lands mid-word. Safe no-op for a collapsed selection or one spanning multiple paragraphs. */
@@ -92,6 +103,8 @@ export function RichTextEditor({
   align,
   letterSpacing,
   lineHeightFactor,
+  isEditing,
+  anchorBox,
 }: RichTextEditorProps) {
   // Refs so onUpdate always reads the latest props without re-creating the
   // editor or its handlers (same pattern as stateRef in useDebossStudio.ts).
@@ -107,48 +120,48 @@ export function RichTextEditor({
     top: -9999,
     left: -9999,
   });
-  // The toolbar is a SELECTION toolbar (like Google Docs/Medium): hidden
-  // until the user selects a text range, shown anchored to that range, and
-  // hidden again the moment the selection collapses. `selectionVersion` is
-  // bumped on every non-empty selection change (including while dragging to
-  // extend a selection) so the position effect below re-tracks it live, not
-  // just on the visible/hidden transition.
-  const [toolbarVisible, setToolbarVisible] = useState(false);
-  const [selectionVersion, setSelectionVersion] = useState(0);
+  // This component only ever mounts while its block is selected
+  // (CanvasTextOverlay.tsx), so the toolbar itself needs no visibility
+  // state of its own any more: it always renders (portaled) for as long as
+  // the component is mounted, block-selection IS "toolbar visible" now.
 
-  // The native Selection API mirrors ProseMirror's own selection (ProseMirror
-  // drives the DOM selection directly), so its bounding rect is a reliable,
-  // simple anchor without needing ProseMirror's own coordsAtPos math.
-  const getSelectionRect = useCallback((): DOMRect | null => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
-    const rect = sel.getRangeAt(0).getBoundingClientRect();
-    if (rect.width === 0 && rect.height === 0) return null;
-    return rect;
+  // Below globals.css's own primary mobile breakpoint, the toolbar docks
+  // at the top of the screen instead of floating near the block (small
+  // screens don't have room to spare, and a block near the top edge would
+  // otherwise constantly hit the flip-below case).
+  const [isMobileDocked, setIsMobileDocked] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_DOCK_QUERY);
+    const update = () => setIsMobileDocked(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
   }, []);
 
   // Portaled to <body> (see the toolbar's render below) so it's never
   // clipped by `.stage-inner`'s `overflow: hidden` (its positioning
   // ancestor otherwise) and always paints above the sidebar/mobile sheet,
   // which are plain unpositioned/lower-z-index siblings. Position itself
-  // is computed here rather than in CSS, since "just above the selection,
+  // is computed here rather than in CSS, since "just above the block,
   // flipping below / clamping sideways near a viewport edge" needs real
   // measured boxes, not something CSS alone can express once the element is
-  // no longer a DOM descendant of what it's anchored to.
+  // no longer a DOM descendant of what it's anchored to. Anchored to the
+  // block's own box (not a character selection, which may not exist at
+  // all in the selected-only sub-state), passed down from
+  // CanvasTextOverlay.tsx's already-computed `contentBox`.
   const recomputeToolbarPosition = useCallback(() => {
     const toolbar = toolbarRef.current;
-    const anchorRect = getSelectionRect();
-    if (!toolbar || !anchorRect) return;
+    if (!toolbar) return;
     const toolbarRect = toolbar.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // Vertical: prefer sitting just above the selection so it doesn't cover
-    // the selected text. Flip to just below when there isn't room above; if
+    // Vertical: prefer sitting just above the block so it doesn't cover
+    // the text. Flip to just below when there isn't room above; if
     // neither fits, clamp fully into view rather than letting either edge clip.
-    let top = anchorRect.top - toolbarRect.height - TOOLBAR_MARGIN;
+    let top = anchorBox.top - toolbarRect.height - TOOLBAR_MARGIN;
     if (top < TOOLBAR_MARGIN) {
-      const below = anchorRect.bottom + TOOLBAR_MARGIN;
+      const below = anchorBox.top + anchorBox.height + TOOLBAR_MARGIN;
       if (below + toolbarRect.height + TOOLBAR_MARGIN <= vh) {
         top = below;
       } else {
@@ -159,33 +172,34 @@ export function RichTextEditor({
       }
     }
 
-    // Horizontal: centered over the selection, clamped fully into the
+    // Horizontal: centered over the block, clamped fully into the
     // viewport so it can't run off either side near the canvas's edges.
-    let left = anchorRect.left + anchorRect.width / 2 - toolbarRect.width / 2;
+    let left = anchorBox.left + anchorBox.width / 2 - toolbarRect.width / 2;
     left = Math.min(left, vw - toolbarRect.width - TOOLBAR_MARGIN);
     left = Math.max(left, TOOLBAR_MARGIN);
 
     setToolbarPos({ top, left });
-  }, [getSelectionRect]);
+  }, [anchorBox]);
 
   // Measure/position synchronously before paint (no visible flash), then
-  // keep tracking: the resize/scroll listeners re-anchor against the live
-  // selection rect (which itself moves with any reflow), covering both a
-  // window resize/scroll and a growing/shrinking drag-selection.
+  // keep tracking: the resize/scroll listeners re-clamp against the
+  // viewport even when the block's own box hasn't moved. Skipped entirely
+  // while docked, since that's pure CSS positioning with no JS-computed
+  // top/left to keep in sync.
   useLayoutEffect(() => {
-    if (!toolbarVisible) return;
+    if (isMobileDocked) return;
     recomputeToolbarPosition();
-  }, [toolbarVisible, selectionVersion, recomputeToolbarPosition]);
+  }, [isMobileDocked, recomputeToolbarPosition]);
 
   useEffect(() => {
-    if (!toolbarVisible) return;
+    if (isMobileDocked) return;
     window.addEventListener("resize", recomputeToolbarPosition);
     window.addEventListener("scroll", recomputeToolbarPosition, true);
     return () => {
       window.removeEventListener("resize", recomputeToolbarPosition);
       window.removeEventListener("scroll", recomputeToolbarPosition, true);
     };
-  }, [toolbarVisible, recomputeToolbarPosition]);
+  }, [isMobileDocked, recomputeToolbarPosition]);
 
   const editor = useEditor({
     extensions: [
@@ -216,18 +230,6 @@ export function RichTextEditor({
       }
       const doc = ed.getJSON() as unknown as RichDoc;
       onChangeRef.current(serializeDoc(doc, baseSizeRef.current));
-    },
-    // Drives the floating toolbar: shown for any non-empty selection (drag
-    // select or Ctrl+A), hidden the instant it collapses back to a cursor.
-    // Fires on every transaction that changes the selection, including
-    // ones from typing (which collapses it) and from extending a drag.
-    onSelectionUpdate: ({ editor: ed }) => {
-      if (ed.state.selection.empty) {
-        setToolbarVisible(false);
-      } else {
-        setToolbarVisible(true);
-        setSelectionVersion((v) => v + 1);
-      }
     },
   });
 
@@ -265,15 +267,39 @@ export function RichTextEditor({
     root.style.textAlign = align;
   }, [editor, dir, font, baseSize, letterSpacing, lineHeightFactor, align]);
 
-  // Auto-focus on mount: CanvasTextOverlay only mounts this component while
-  // actively editing, so becoming ready IS "entering edit mode."
+  // While editing (typing mode): focus at the end, exactly like before this
+  // component could also mount in a non-typing, selected-only sub-state.
+  // While merely selected: select the WHOLE block's content, WITHOUT
+  // focusing, so the toolbar's actions (below) apply block-wide by default
+  // per the new selection-toolbar model. Deliberately no `.focus()` here:
+  // CanvasTextOverlay.tsx's own block-delete keydown listener listens on
+  // `window` for Delete/Backspace while selected-not-editing, and doesn't
+  // check which element has DOM focus. If this (invisible) editor ever
+  // actually held focus, ProseMirror's own keymap would intercept
+  // Backspace at the contentEditable before it ever bubbles to `window`,
+  // corrupting the hidden doc instead of deleting the block. `selectAll()`
+  // only touches ProseMirror's own internal state.selection, which doesn't
+  // require or cause DOM focus.
   useEffect(() => {
     if (!editor) return;
-    editor.commands.focus("end");
-  }, [editor]);
+    if (isEditing) {
+      editor.commands.focus("end");
+    } else {
+      editor.commands.selectAll();
+    }
+  }, [editor, isEditing]);
 
   const capabilities = FONT_CAPABILITIES[font];
   const isCursive = CURSIVE_SCRIPT_FONTS.includes(font);
+
+  // Every toolbar command chain starts here instead of a bare
+  // `editor.chain()`: `.focus()` is only appropriate while `isEditing`.
+  // Calling it in the selected-only sub-state would steal DOM focus onto
+  // this (invisible) editor, reintroducing the exact Delete-key conflict
+  // the mount effect above avoids by never calling `.focus()` on select.
+  // The underlying commands (toggleBold/Italic/Underline/setFontSize)
+  // don't need focus to apply to `editor.state.selection` either way.
+  const beginChain = (ed: Editor) => (isEditing ? ed.chain().focus() : ed.chain());
 
   // Mark-toggle/size commands don't collapse the selection on their own, but
   // this restores it defensively anyway (belt-and-suspenders): the point is
@@ -313,7 +339,7 @@ export function RichTextEditor({
   const applySize = (raw: number) => {
     if (!editor) return;
     const next = Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(raw)));
-    runFormatting(() => editor.chain().focus().setFontSize(next).run());
+    runFormatting(() => beginChain(editor).setFontSize(next).run());
     setSizeDraft(String(next));
   };
 
@@ -361,10 +387,10 @@ export function RichTextEditor({
   const toolbar = (
     <div
       ref={toolbarRef}
-      className="rich-text-toolbar"
+      className={`rich-text-toolbar${isMobileDocked ? " is-docked" : ""}`}
       role="toolbar"
       aria-label="Text formatting"
-      style={{ top: toolbarPos.top, left: toolbarPos.left }}
+      style={isMobileDocked ? undefined : { top: toolbarPos.top, left: toolbarPos.left }}
     >
       <button
         type="button"
@@ -374,7 +400,7 @@ export function RichTextEditor({
         aria-label="Bold"
         title={capabilities.bold ? "Bold" : `Bold isn't available for ${font} (no bold face loaded)`}
         onMouseDown={preserveSelection}
-        onClick={() => runFormatting(() => editor?.chain().focus().toggleBold().run())}
+        onClick={() => runFormatting(() => editor && beginChain(editor).toggleBold().run())}
       >
         <Bold size={15} aria-hidden="true" />
       </button>
@@ -386,7 +412,7 @@ export function RichTextEditor({
         aria-label="Italic"
         title={capabilities.italic ? "Italic" : `Italic isn't available for ${font} (no italic face loaded)`}
         onMouseDown={preserveSelection}
-        onClick={() => runFormatting(() => editor?.chain().focus().toggleItalic().run())}
+        onClick={() => runFormatting(() => editor && beginChain(editor).toggleItalic().run())}
       >
         <Italic size={15} aria-hidden="true" />
       </button>
@@ -398,7 +424,7 @@ export function RichTextEditor({
         aria-label="Underline"
         title="Underline"
         onMouseDown={preserveSelection}
-        onClick={() => runFormatting(() => editor?.chain().focus().toggleUnderline().run())}
+        onClick={() => runFormatting(() => editor && beginChain(editor).toggleUnderline().run())}
       >
         <UnderlineIcon size={15} aria-hidden="true" />
       </button>
@@ -467,7 +493,7 @@ export function RichTextEditor({
 
   return (
     <div className="rich-text-editor">
-      {toolbarVisible && createPortal(toolbar, document.body)}
+      {createPortal(toolbar, document.body)}
       <EditorContent editor={editor} className="rich-text-input" />
     </div>
   );

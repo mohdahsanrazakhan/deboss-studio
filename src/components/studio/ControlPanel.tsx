@@ -54,6 +54,8 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     defaultSetId,
     paperKey,
     selectedBlockId,
+    setSelectedBlockId,
+    setEditingBlockId,
     updateTextBlock,
     setBlockFont,
     setBrandingText,
@@ -105,7 +107,16 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
             key={id}
             type="button"
             className="mobile-menu-btn"
-            onClick={() => setOpenSection(id)}
+            onClick={() => {
+              // Deselect any active text block first: on mobile, a selected
+              // block's formatting toolbar docks at the top of the screen
+              // (RichTextEditor.tsx), the same real estate a floating
+              // .mini-preview swatch uses while a sheet is open. Only one of
+              // the two ever needs to show at once, so opening a sheet wins.
+              setSelectedBlockId(null);
+              setEditingBlockId(null);
+              setOpenSection(id);
+            }}
           >
             <Icon size={20} aria-hidden="true" />
             <span>{label}</span>
