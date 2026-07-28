@@ -185,6 +185,9 @@ export function useDebossStudio(
         // fall back to a synthesized slant while it loads.
         ensureFont("Playfair Display", DEFAULT_TEXT_BLOCK.fontSize, "italic"),
         ensureFont("Noto Serif Devanagari", DEFAULT_TEXT_BLOCK.fontSize),
+        // Self-hosted (public/fonts/), see globals.css's @font-face block.
+        ensureFont("Jameel Noori Nastaleeq", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Jameel Noori Nastaleeq Kasheeda", DEFAULT_TEXT_BLOCK.fontSize),
         document.fonts.ready,
       ]);
       if (cancelled) return;

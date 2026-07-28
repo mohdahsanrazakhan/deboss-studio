@@ -18,6 +18,31 @@
   --font-ui:   "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* ------------------------- Self-hosted fonts ------------------------
+   Fonts served from our own /public/fonts (not Google Fonts, which load
+   via the <link> in app/layout.tsx instead). Same-origin, so no CSP
+   change is needed (middleware.ts's font-src already allows 'self').
+   To add another one later: drop the .ttf/.woff2 file in public/fonts/,
+   add its own @font-face block below, then follow CLAUDE.md's "Add a
+   font" row (types/deboss.ts's FontFamily union, constants.ts's
+   FONT_OPTIONS/FONT_CAPABILITIES/CURSIVE_SCRIPT_FONTS as applicable,
+   the preload list in useDebossStudio.ts, and the font-family fallback
+   stacks a few lines below and in RichTextEditor.tsx). */
+@font-face {
+  font-family: "Jameel Noori Nastaleeq";
+  src: url("/fonts/jameel-noori-nastaleeq-regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Jameel Noori Nastaleeq Kasheeda";
+  src: url("/fonts/jameel-noori-nastaleeq-kasheeda.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }
@@ -236,7 +261,7 @@ body {
   color: var(--ink);
   /* Baseline fallback stack before RichTextEditor.tsx's own effect sets the
      active font first; same stack as that effect uses. */
-  font-family: "Noto Nastaliq Urdu", "Playfair Display", "Noto Serif Devanagari", "Gulzar", "Noto Naskh Arabic", ui-serif, serif;
+  font-family: "Noto Nastaliq Urdu", "Playfair Display", "Noto Serif Devanagari", "Gulzar", "Noto Naskh Arabic", "Jameel Noori Nastaleeq", "Jameel Noori Nastaleeq Kasheeda", ui-serif, serif;
 }
 .canvas-text-overlay.is-dark-paper .rich-text-input .ProseMirror { color: #fff; }
 .canvas-text-overlay .rich-text-input .ProseMirror p { margin: 0; }

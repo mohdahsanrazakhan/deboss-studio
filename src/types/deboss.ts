@@ -18,7 +18,9 @@ export type FontFamily =
   | "Gulzar"
   | "Noto Naskh Arabic"
   | "Playfair Display"
-  | "Noto Serif Devanagari";
+  | "Noto Serif Devanagari"
+  | "Jameel Noori Nastaleeq"
+  | "Jameel Noori Nastaleeq Kasheeda";
 
 /** IDs of the numeric slider-controlled parameters (document-level/shared across all text blocks). */
 export type SliderId =

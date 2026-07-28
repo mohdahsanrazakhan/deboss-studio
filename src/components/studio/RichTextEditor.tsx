@@ -255,7 +255,7 @@ export function RichTextEditor({
     // then the same multi-script fallback stack as the CSS default (see
     // .rich-text-input .ProseMirror in globals.css), so typing a script
     // the active font doesn't cover still shows readable glyphs.
-    root.style.fontFamily = `"${font}", "Noto Nastaliq Urdu", "Playfair Display", "Noto Serif Devanagari", "Gulzar", "Noto Naskh Arabic", ui-serif, serif`;
+    root.style.fontFamily = `"${font}", "Noto Nastaliq Urdu", "Playfair Display", "Noto Serif Devanagari", "Gulzar", "Noto Naskh Arabic", "Jameel Noori Nastaleeq", "Jameel Noori Nastaleeq Kasheeda", ui-serif, serif`;
     // Base (unmarked-run) size/spacing must match buildMask's own formulas
     // exactly (same principle as letterSpacing/lineHeightFactor's documented
     // measure-vs-draw parity), since this editor now renders pixel-matched

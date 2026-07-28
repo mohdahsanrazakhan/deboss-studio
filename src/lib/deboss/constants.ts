@@ -109,6 +109,8 @@ export const FONT_OPTIONS: { value: FontFamily; label: string }[] = [
   { value: "Noto Naskh Arabic", label: "Noto Naskh Arabic" },
   { value: "Playfair Display", label: "Playfair Display (Latin)" },
   { value: "Noto Serif Devanagari", label: "Noto Serif Devanagari" },
+  { value: "Jameel Noori Nastaleeq", label: "Jameel Noori Nastaleeq" },
+  { value: "Jameel Noori Nastaleeq Kasheeda", label: "Jameel Noori Nastaleeq (Kasheeda)" },
 ];
 
 /**
@@ -128,6 +130,10 @@ export const FONT_CAPABILITIES: Record<FontFamily, { bold: boolean; italic: bool
   "Noto Naskh Arabic": { bold: true, italic: true },
   "Playfair Display": { bold: true, italic: true },
   "Noto Serif Devanagari": { bold: true, italic: true },
+  // Self-hosted, single-weight .ttf files (public/fonts/, no bold face
+  // loaded), same reasoning as Gulzar above.
+  "Jameel Noori Nastaleeq": { bold: false, italic: true },
+  "Jameel Noori Nastaleeq Kasheeda": { bold: false, italic: true },
 };
 
 /**
@@ -141,6 +147,8 @@ export const CURSIVE_SCRIPT_FONTS: FontFamily[] = [
   "Noto Nastaliq Urdu",
   "Gulzar",
   "Noto Naskh Arabic",
+  "Jameel Noori Nastaleeq",
+  "Jameel Noori Nastaleeq Kasheeda",
 ];
 
 export const SLIDER_DEFS: SliderDef[] = [

@@ -3,7 +3,7 @@
 import { Layers, Plus, SlidersHorizontal, Star, Type as TypeIcon, X } from "lucide-react";
 import { useState } from "react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
-import type { AspectId, FontFamily, TextAlign } from "@/types/deboss";
+import type { AspectId, FontFamily } from "@/types/deboss";
 import {
   ASPECT_OPTIONS,
   FONT_OPTIONS,
@@ -12,7 +12,6 @@ import {
   PAPER_TONES,
   PRESETS,
   SLIDER_DEFS,
-  TYPE_SLIDER_DEFS,
   rgbToHex,
 } from "@/lib/deboss/constants";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -35,12 +34,6 @@ const MOBILE_MENU: { id: string; label: string; Icon: typeof Layers }[] = [
   { id: "type-paper", label: "Type & Paper", Icon: TypeIcon },
 ];
 
-const ALIGNMENTS: { value: TextAlign; label: string }[] = [
-  { value: "right", label: "Right" },
-  { value: "center", label: "Center" },
-  { value: "left", label: "Left" },
-];
-
 function formatSliderValue(v: number): string {
   return v.toFixed(2).replace(/\.00$/, ".0");
 }
@@ -56,7 +49,6 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     selectedBlockId,
     setSelectedBlockId,
     setEditingBlockId,
-    updateTextBlock,
     setBlockFont,
     setBrandingText,
     setSlider,
@@ -71,10 +63,11 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     toggleDefaultSet,
   } = studio;
 
-  // Font/Alignment/Letter spacing/Line height (below) edit whichever block
-  // is selected on the canvas, not a document-wide default: Canva's own
-  // property panel works the same way, always reflecting the active object.
+  // Font (below) edits whichever block is selected on the canvas; with
+  // nothing selected it falls back to the first block, so the picker is
+  // never just dead — there's always a sensible target to apply it to.
   const selectedBlock = state.textBlocks.find((b) => b.id === selectedBlockId) ?? null;
+  const fontTargetBlock = selectedBlock ?? state.textBlocks[0] ?? null;
 
   // UI-only: whether the "name + save" form is expanded, and which set
   // (if any) is awaiting delete confirmation. Neither belongs in DebossState.
@@ -318,21 +311,17 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
       <section className="group">
         <span className="group-label">Type &amp; paper</span>
 
-        {!selectedBlock && (
-          <p className="field-hint">Select a text block on the canvas to edit its style.</p>
-        )}
-
         <div className="field-row">
           <label htmlFor="font">Font</label>
           <select
             id="font"
-            disabled={!selectedBlock}
-            value={selectedBlock?.font ?? ""}
+            disabled={!fontTargetBlock}
+            value={fontTargetBlock?.font ?? ""}
             onChange={(e) => {
-              if (selectedBlock) void setBlockFont(selectedBlock.id, e.target.value as FontFamily);
+              if (fontTargetBlock) void setBlockFont(fontTargetBlock.id, e.target.value as FontFamily);
             }}
           >
-            {!selectedBlock && <option value="" />}
+            {!fontTargetBlock && <option value="" />}
             {FONT_OPTIONS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
@@ -340,47 +329,6 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
             ))}
           </select>
         </div>
-
-        <div className="field-row">
-          <span id="align-label">Alignment</span>
-          <div className="seg" role="group" aria-labelledby="align-label">
-            {ALIGNMENTS.map((a) => (
-              <button
-                key={a.value}
-                type="button"
-                className={`seg-btn${selectedBlock?.align === a.value ? " is-active" : ""}`}
-                aria-pressed={selectedBlock?.align === a.value}
-                disabled={!selectedBlock}
-                onClick={() => selectedBlock && updateTextBlock(selectedBlock.id, { align: a.value })}
-              >
-                {a.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {TYPE_SLIDER_DEFS.map((def) => (
-          <div className="slider" key={def.id}>
-            <div className="slider-head">
-              <label htmlFor={def.id}>{def.label}</label>
-              <output htmlFor={def.id}>
-                {selectedBlock ? formatSliderValue(selectedBlock[def.id]) : "-"}
-              </output>
-            </div>
-            <input
-              type="range"
-              id={def.id}
-              min={def.min}
-              max={def.max}
-              step={def.step}
-              disabled={!selectedBlock}
-              value={selectedBlock?.[def.id] ?? def.min}
-              onChange={(e) => {
-                if (selectedBlock) updateTextBlock(selectedBlock.id, { [def.id]: Number(e.target.value) });
-              }}
-            />
-          </div>
-        ))}
 
         <div className="field-row">
           <label htmlFor="aspect">Canvas shape</label>
