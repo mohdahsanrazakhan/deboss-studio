@@ -32,7 +32,7 @@ export type SliderId =
   | "tintStrength";
 
 /** Fixed canvas shapes; "auto" sizes the canvas to fit the text. */
-export type AspectId = "auto" | "1:1" | "4:5" | "9:16" | "16:9";
+export type AspectId = "auto" | "1:1" | "4:5" | "3:4" | "9:16" | "16:9";
 
 /**
  * One independently-positioned, independently-styled text layer (Canva-

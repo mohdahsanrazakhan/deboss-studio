@@ -184,6 +184,7 @@ export const PAPER_TONES: PaperTone[] = [
 export const ASPECT_RATIOS: Record<Exclude<AspectId, "auto">, number> = {
   "1:1": 1,
   "4:5": 4 / 5,
+  "3:4": 3 / 4,
   "9:16": 9 / 16,
   "16:9": 16 / 9,
 };
@@ -192,6 +193,7 @@ export const ASPECT_OPTIONS: { value: AspectId; label: string }[] = [
   { value: "auto", label: "Auto (fits text)" },
   { value: "1:1", label: "Square 1:1" },
   { value: "4:5", label: "Portrait 4:5" },
+  { value: "3:4", label: "Instagram Portrait (1080x1440)" },
   { value: "9:16", label: "Story 9:16" },
   { value: "16:9", label: "Landscape 16:9" },
 ];
