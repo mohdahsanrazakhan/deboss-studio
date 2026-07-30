@@ -111,6 +111,13 @@ export const FONT_OPTIONS: { value: FontFamily; label: string }[] = [
   { value: "Noto Serif Devanagari", label: "Noto Serif Devanagari" },
   { value: "Jameel Noori Nastaleeq", label: "Jameel Noori Nastaleeq" },
   { value: "Jameel Noori Nastaleeq Kasheeda", label: "Jameel Noori Nastaleeq (Kasheeda)" },
+  { value: "Amiri", label: "Amiri (Naskh)" },
+  { value: "Reem Kufi", label: "Reem Kufi" },
+  { value: "Reem Kufi Fun", label: "Reem Kufi Fun" },
+  { value: "Aref Ruqaa", label: "Aref Ruqaa" },
+  { value: "Lateef", label: "Lateef" },
+  { value: "Rakkas", label: "Rakkas (display)" },
+  { value: "Mirza", label: "Mirza (Nastaliq)" },
 ];
 
 /**
@@ -134,6 +141,20 @@ export const FONT_CAPABILITIES: Record<FontFamily, { bold: boolean; italic: bool
   // loaded), same reasoning as Gulzar above.
   "Jameel Noori Nastaleeq": { bold: false, italic: true },
   "Jameel Noori Nastaleeq Kasheeda": { bold: false, italic: true },
+  // Verified against the actual Google Fonts css2 API response (see the
+  // comment on GOOGLE_FONTS_HREF in app/layout.tsx) before setting these,
+  // not assumed: Amiri, Aref Ruqaa, Lateef, and Mirza each serve a
+  // genuinely distinct static file for weight 700 (real bold); Reem Kufi
+  // and Reem Kufi Fun are true variable fonts with a real 400-700 weight
+  // axis in one file. Rakkas ships only one static weight (400), same
+  // "no bold face at all" situation as Gulzar.
+  "Amiri": { bold: true, italic: true },
+  "Reem Kufi": { bold: true, italic: true },
+  "Reem Kufi Fun": { bold: true, italic: true },
+  "Aref Ruqaa": { bold: true, italic: true },
+  "Lateef": { bold: true, italic: true },
+  "Rakkas": { bold: false, italic: true },
+  "Mirza": { bold: true, italic: true },
 };
 
 /**
@@ -149,6 +170,18 @@ export const CURSIVE_SCRIPT_FONTS: FontFamily[] = [
   "Noto Naskh Arabic",
   "Jameel Noori Nastaleeq",
   "Jameel Noori Nastaleeq Kasheeda",
+  // All Arabic-script fonts, so all get the same word-boundary-snap
+  // mitigation regardless of visual style (Naskh, Kufic, Ruqaa, Nastaliq,
+  // or decorative display) — the underlying letter-joining behavior that
+  // breaks at a mid-word style boundary is a property of the SCRIPT, not
+  // of how blocky/angular a particular font's letterforms happen to look.
+  "Amiri",
+  "Reem Kufi",
+  "Reem Kufi Fun",
+  "Aref Ruqaa",
+  "Lateef",
+  "Rakkas",
+  "Mirza",
 ];
 
 export const SLIDER_DEFS: SliderDef[] = [

@@ -22,7 +22,7 @@ const HOW_IT_WORKS = [
   },
   {
     title: "Pick a font and paper",
-    body: "Choose from five fonts spanning Urdu, Arabic, Latin, and Devanagari, a paper tone, alignment, and canvas shape.",
+    body: "Choose from fourteen fonts spanning Urdu, Arabic, Latin, and Devanagari, a paper tone, alignment, and canvas shape.",
   },
   {
     title: "Export",
@@ -49,7 +49,7 @@ const FAQ_ITEMS = [
   {
     question: "Which languages and fonts are supported?",
     answer:
-      "Any script works. Five fonts are included: Noto Nastaliq Urdu, Gulzar, and Noto Naskh Arabic for Urdu and Arabic, plus Playfair Display and Noto Serif Devanagari for Latin and Hindi text.",
+      "Any script works. Fourteen fonts are included: Noto Nastaliq Urdu, Jameel Noori Nastaleeq (plus its Kasheeda variant), Gulzar, and Mirza for Nastaliq-style Urdu; Amiri, Noto Naskh Arabic, Reem Kufi, Reem Kufi Fun, Aref Ruqaa, Lateef, and Rakkas for Arabic in a range of styles; plus Playfair Display and Noto Serif Devanagari for Latin and Hindi text.",
   },
   {
     question: "Can I save my own style and reuse it later?",

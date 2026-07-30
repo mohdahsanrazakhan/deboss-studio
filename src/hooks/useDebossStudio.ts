@@ -188,6 +188,13 @@ export function useDebossStudio(
         // Self-hosted (public/fonts/), see globals.css's @font-face block.
         ensureFont("Jameel Noori Nastaleeq", DEFAULT_TEXT_BLOCK.fontSize),
         ensureFont("Jameel Noori Nastaleeq Kasheeda", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Amiri", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Reem Kufi", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Reem Kufi Fun", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Aref Ruqaa", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Lateef", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Rakkas", DEFAULT_TEXT_BLOCK.fontSize),
+        ensureFont("Mirza", DEFAULT_TEXT_BLOCK.fontSize),
         document.fonts.ready,
       ]);
       if (cancelled) return;

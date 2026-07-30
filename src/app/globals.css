@@ -261,7 +261,7 @@ body {
   color: var(--ink);
   /* Baseline fallback stack before RichTextEditor.tsx's own effect sets the
      active font first; same stack as that effect uses. */
-  font-family: "Noto Nastaliq Urdu", "Playfair Display", "Noto Serif Devanagari", "Gulzar", "Noto Naskh Arabic", "Jameel Noori Nastaleeq", "Jameel Noori Nastaleeq Kasheeda", ui-serif, serif;
+  font-family: "Noto Nastaliq Urdu", "Playfair Display", "Noto Serif Devanagari", "Gulzar", "Noto Naskh Arabic", "Jameel Noori Nastaleeq", "Jameel Noori Nastaleeq Kasheeda", "Amiri", "Reem Kufi", "Reem Kufi Fun", "Aref Ruqaa", "Lateef", "Rakkas", "Mirza", ui-serif, serif;
 }
 .canvas-text-overlay.is-dark-paper .rich-text-input .ProseMirror { color: #fff; }
 .canvas-text-overlay .rich-text-input .ProseMirror p { margin: 0; }

@@ -20,7 +20,14 @@ export type FontFamily =
   | "Playfair Display"
   | "Noto Serif Devanagari"
   | "Jameel Noori Nastaleeq"
-  | "Jameel Noori Nastaleeq Kasheeda";
+  | "Jameel Noori Nastaleeq Kasheeda"
+  | "Amiri"
+  | "Reem Kufi"
+  | "Reem Kufi Fun"
+  | "Aref Ruqaa"
+  | "Lateef"
+  | "Rakkas"
+  | "Mirza";
 
 /** IDs of the numeric slider-controlled parameters (document-level/shared across all text blocks). */
 export type SliderId =

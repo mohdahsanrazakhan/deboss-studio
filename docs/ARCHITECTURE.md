@@ -45,7 +45,7 @@ Dependency direction is strictly downward. The engine never imports React; compo
 
 ## Why fonts load via Google Fonts `<link>` instead of `next/font`
 
-`next/font` rewrites family names to hashed private names. The canvas engine must address faces by real family name in `ctx.font` and `document.fonts.load()` for correct shaping across scripts, so the app keeps the real families ("Noto Nastaliq Urdu", "Gulzar", "Noto Naskh Arabic", "Playfair Display", "Noto Serif Devanagari", "Inter") and the CSP allowlists exactly the two Google Fonts origins. First paint of the canvas waits on `document.fonts.ready` plus explicit `fonts.load()` calls per family.
+`next/font` rewrites family names to hashed private names. The canvas engine must address faces by real family name in `ctx.font` and `document.fonts.load()` for correct shaping across scripts, so the app keeps the real families (the full list is in `FontFamily`, `types/deboss.ts`, currently twelve Google Fonts plus two self-hosted, plus UI-only "Inter") and the CSP allowlists exactly the two Google Fonts origins (`middleware.ts`) plus `'self'` for the self-hosted files. First paint of the canvas waits on `document.fonts.ready` plus explicit `fonts.load()` calls per family.
 
 ## Direction detection (RTL vs LTR)
 
