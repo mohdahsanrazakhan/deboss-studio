@@ -56,7 +56,7 @@ export const BRANDING_DEFAULT_SIZE_RATIO = 0.35;
 /** Perceived-luminance (0-255) cutoff below which paper counts as "dark" (isPaperDark, engine.ts; used by CanvasTextOverlay.tsx's live-editing overlay colour). */
 export const BRANDING_PAPER_LUMINANCE_THRESHOLD = 140;
 
-export const DEFAULT_TEXT = "بسمِ اللہ\nالرحمٰن الرحیم";
+export const DEFAULT_TEXT = "یہاں لکھیں";
 
 /**
  * A plain named constant (not DEFAULT_STATE.textBlocks[0]) specifically so

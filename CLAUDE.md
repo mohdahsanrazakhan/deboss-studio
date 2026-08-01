@@ -4,7 +4,7 @@ This file orients Claude Code (and any AI coding agent) working in this reposito
 
 ## What this project is
 
-A single-page Next.js 15 (App Router, TypeScript, React 19) web app that renders any text (Urdu, Arabic, Hindi, English, and more) as a **debossed / blind-letterpress effect** on textured paper using the HTML5 Canvas 2D API, and exports it as a high-resolution PNG. There is **no backend, no server database, no auth, no API routes**; all rendering happens in the user's browser. User-saved "sets" (see below) persist client-side in `localStorage` only; nothing is ever sent to a server. The default sample text is Urdu (`بسمِ اللہ / الرحمٰن الرحیم`), reflecting the app's origin, but the engine and UI are script-agnostic.
+A single-page Next.js 15 (App Router, TypeScript, React 19) web app that renders any text (Urdu, Arabic, Hindi, English, and more) as a **debossed / blind-letterpress effect** on textured paper using the HTML5 Canvas 2D API, and exports it as a high-resolution PNG. There is **no backend, no server database, no auth, no API routes**; all rendering happens in the user's browser. User-saved "sets" (see below) persist client-side in `localStorage` only; nothing is ever sent to a server. The default sample text is Urdu (`یہاں لکھیں`), reflecting the app's origin, but the engine and UI are script-agnostic.
 
 It was ported 1:1 from a vanilla HTML/CSS/JS app. Feature parity with the original is documented in `docs/FEATURES.md`; do not remove or regress any feature listed there.
 
