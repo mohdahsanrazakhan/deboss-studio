@@ -46,7 +46,15 @@ export function middleware(request: NextRequest) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' blob: data:",
-    "connect-src 'self'",
+    // api.emailjs.com: OTP + owner-notification email sends (gallery
+    // submission feature, src/lib/gallery-submission/emailjs.ts).
+    // script.google.com + script.googleusercontent.com: the owner's Apps
+    // Script Sheet web app (src/lib/gallery-submission/sheet.ts): Apps
+    // Script redirects from the .google.com URL to .googleusercontent.com
+    // to actually execute, and fetch() follows redirects by default, so
+    // both origins are required or the call is silently blocked mid-flight.
+    // See docs/SECURITY.md.
+    "connect-src 'self' https://api.emailjs.com https://script.google.com https://script.googleusercontent.com",
     "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

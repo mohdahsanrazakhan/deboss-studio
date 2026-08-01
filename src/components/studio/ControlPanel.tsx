@@ -15,6 +15,7 @@ import {
   rgbToHex,
 } from "@/lib/deboss/constants";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { RequestPostButton } from "./RequestPostButton";
 import { SectionSheet } from "./SectionSheet";
 
 /** Icon sizes for the "My sets" chips: star sits inline, delete is a small floating badge. */
@@ -196,6 +197,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
                 >
                   <X size={CHIP_DELETE_ICON_SIZE} />
                 </button>
+                <RequestPostButton set={set} textBlocks={state.textBlocks} />
               </div>
             ))}
           </div>

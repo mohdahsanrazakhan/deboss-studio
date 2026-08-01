@@ -2,7 +2,7 @@
 
 ## Threat model
 
-This is a static, client-only tool: no authentication, no server-side state, no persistence, no user data leaving the browser. The text a user types is rendered onto a local canvas and exported locally; it is never transmitted anywhere. The remaining attack surface is therefore:
+This is a static, client-only tool: no authentication, no server-side state, no persistence. The text a user types is rendered onto a local canvas and exported locally; it is never transmitted anywhere. The one exception is the opt-in gallery-submission feature (a visitor explicitly requesting one of their own saved Sets be considered for the public gallery): that flow sends a display name, email, optional description, and a small preview image to the site owner via EmailJS and a Google Sheet the owner controls; nothing else in the app makes any outbound network call. The remaining attack surface is therefore:
 
 1. **XSS / script injection** into the page.
 2. **Supply chain** (dependencies, third-party origins).
@@ -22,7 +22,7 @@ script-src 'self' 'nonce-<random-per-request>' 'strict-dynamic';
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 font-src 'self' https://fonts.gstatic.com;
 img-src 'self' blob: data:;
-connect-src 'self';
+connect-src 'self' https://api.emailjs.com https://script.google.com https://script.googleusercontent.com;
 worker-src 'self';
 object-src 'none';
 base-uri 'self';
@@ -37,7 +37,7 @@ Rationale:
 - `'strict-dynamic'` lets scripts trusted via the nonce load their own child chunks (webpack/RSC chunk loading), required for the app to run at all with a nonce-based policy. Browsers that honor it then ignore `'self'` for `script-src`; the resulting "Ignoring 'self' within script-src" console line is informational, not an error.
 - **Do not** add a `Content-Security-Policy` header back into `next.config.mjs`. Two CSP headers on one response are enforced as an intersection (most restrictive per directive wins), so a static `script-src 'self'` there would silently defeat the nonce and reintroduce the blank-page bug.
 - **Don't apply the nonce to the JSON-LD script.** `layout.tsx` reads the nonce (required, see above) but must NOT put it on the JSON-LD `<script type="application/ld+json">` (developer-controlled constants only; no user input ever flows into it). That script doesn't need a nonce in the first place: browsers only enforce `script-src` against executable script MIME types, and `application/ld+json` is inert data that's never executed. Nonce'ing it anyway caused a hydration mismatch, since browsers hide a script's `nonce` attribute from the DOM right after insertion (so React's SSR-rendered value can never match what it reads back client-side). Keep that one script nonce-free while still calling `headers()`.
-- Google Fonts is the **only** external origin (styles + font binaries), required for multi-script shaping. Nothing else may be added without updating this document.
+- Google Fonts (styles + font binaries) and, since the gallery-submission feature, three more origins under `connect-src` only: `api.emailjs.com` (sends the OTP email and the owner-notification email, src/lib/gallery-submission/emailjs.ts) and `script.google.com`/`script.googleusercontent.com` (the owner's own Apps Script Sheet web app, src/lib/gallery-submission/sheet.ts: Apps Script redirects from the `.google.com` URL to `.googleusercontent.com` to actually execute, and `fetch` follows redirects by default, so both are required). These are the first outbound network calls this app has ever made; nothing else may be added without updating this document.
 - `blob:` in `img-src` supports the PNG download flow (`URL.createObjectURL`).
 - `worker-src 'self'` allows `public/sw.js` (the offline service worker) to register. It's explicit rather than left to fall back from `script-src`, since that fallback would inherit `'strict-dynamic'` (which makes browsers ignore `'self'` for script loads), and `navigator.serviceWorker.register()` has no nonce to offer instead.
 - `'unsafe-inline'` in `style-src` is required by Next.js critical-CSS injection; scripts remain locked down via the nonce, which is what matters for XSS.
@@ -66,8 +66,9 @@ Threat model impact is minimal: it only caches GET responses (its own precached 
 - **No `dangerouslySetInnerHTML` with dynamic data.** User text goes only into a controlled `<textarea>` value and into `ctx.fillText()`; canvas text drawing cannot execute markup.
 - **Input bounding**: text capped at `MAX_TEXT_LENGTH = 2000` (plus `maxLength` on the textarea) and canvas height clamped to 1100 logical px, preventing render-loop DoS from megabyte pastes.
 - **Numeric inputs** are range-bounded by slider defs; paper keys are parsed defensively (`parsePaperKey` clamps to 0-255 with fallbacks).
-- **No secrets**: the only env var is `NEXT_PUBLIC_SITE_URL` (public by design). `.env*` is gitignored; `.env.example` documents the contract.
+- **No secrets**: every env var is `NEXT_PUBLIC_*` (public by design, including EmailJS's public key and the Apps Script URL, see the gallery-submission section above). `.env*` is gitignored; `.env.example` documents the contract.
 - **Strict TypeScript** (`strict`, `noUncheckedIndexedAccess`) removes a class of undefined-access bugs.
+- **Spreadsheet formula injection guard**: `sanitizeForSheet` (`src/lib/gallery-submission/sheet.ts`) prefixes an apostrophe onto any Display Name/Email/Description/Set Name that starts with `=`, `+`, `-`, `@`, tab, or carriage return, before it's appended as a row to the owner's Google Sheet. Without this, a visitor could submit a value like `=IMPORTXML(...)` and have Sheets execute it as a formula once the row lands (a known CSV/spreadsheet injection class). Not applied to the EmailJS notification body, which has no equivalent formula-execution risk.
 
 ## Operational guidance
 
@@ -80,3 +81,4 @@ Threat model impact is minimal: it only caches GET responses (its own precached 
 
 - `'unsafe-inline'` styles (Next.js requirement); low impact given scripts are locked.
 - Google Fonts as a third-party dependency, accepted for typography correctness; self-hosting the four families under `public/fonts/` with `@font-face` would remove it and allow tightening `style-src`/`font-src` to `'self'` (tracked as a hardening follow-up).
+- **Gallery-submission OTP is client-generated and client-verified, not a real security boundary.** With no backend to keep the code secret (this app's hard "no server" rule), a technically determined visitor could read the 6-digit code out of devtools/network before "verifying" it back. This is a deliberate, user-confirmed trade-off: the OTP's actual job is confirming the visitor typed a real, reachable email address and deterring casual bots/typos, not bank-grade authentication. Cheap mitigations in place: a per-browser-session send cap (`MAX_OTP_SENDS_PER_SESSION`, `src/lib/gallery-submission/constants.ts`) and a honeypot field in the submission form (`GallerySubmissionModal.tsx`). Every submission also lands in the owner's own inbox/spreadsheet for manual review before anything is added to the real gallery, which is the actual backstop, not the OTP.
