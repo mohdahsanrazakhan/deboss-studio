@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import type { CustomSet } from "@/types/deboss";
 
 interface SetPickerModalProps {
@@ -16,10 +17,16 @@ interface SetPickerModalProps {
  * plain text for now, matching .set-chip-name's existing look, rather than
  * rendering a GalleryPreview thumbnail per row (up to MAX_CUSTOM_SETS at
  * once on modal open is not worth the font-load/canvas cost up front).
+ *
+ * Portaled to document.body, matching GallerySubmissionModal.tsx: this one
+ * currently renders from the navbar (no sticky ancestor there today), but
+ * portaling keeps both modals in this feature consistent and safe against
+ * a future navbar CSS change accidentally introducing the same stacking
+ * trap `.panel`'s `position: sticky` caused for the other entry point.
  */
 export function SetPickerModal({ sets, onPick, onClose }: SetPickerModalProps) {
-  return (
-    <div className="modal-overlay" role="presentation" onClick={onClose}>
+  return createPortal(
+    <div className="modal-overlay gallery-submit-overlay" role="presentation" onClick={onClose}>
       <div
         className="modal gallery-submit-modal"
         role="dialog"
@@ -61,6 +68,7 @@ export function SetPickerModal({ sets, onPick, onClose }: SetPickerModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

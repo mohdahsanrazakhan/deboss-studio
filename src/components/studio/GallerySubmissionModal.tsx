@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { CustomSet, DebossState, TextBlock } from "@/types/deboss";
 import type { SubmissionSourceKind } from "@/lib/gallery-submission/types";
 import { DEFAULT_STATE } from "@/lib/deboss/constants";
@@ -64,6 +65,20 @@ function bumpSessionSendCount(): void {
  * keep it secret (this app's hard "no backend" rule), so this only
  * confirms the email is reachable and deters casual bots/typos, not a
  * cryptographic guarantee. See docs/GALLERY_SUBMISSION_SETUP.md.
+ *
+ * Both returns are portaled to document.body via createPortal, NOT
+ * rendered as a normal DOM descendant of RequestPostButton/CreateLauncher.
+ * `.panel` (the sidebar, globals.css) is `position: sticky`, which
+ * establishes its own stacking context; a `position: fixed` modal nested
+ * inside it gets its paint order trapped within that local stacking
+ * context instead of competing at the page root, so it renders BEHIND
+ * `.stage`/PreviewStage's real canvas (a DOM sibling of `.panel` with no
+ * z-index of its own that simply paints later since it comes after
+ * `.panel` in the layout) no matter how high this modal's own z-index is.
+ * This shipped as a real bug once (reported as "the modal opens behind
+ * the preview"). Portaling out of `.panel` entirely removes the trapping
+ * ancestor, the same fix already used for RichTextEditor.tsx's floating
+ * toolbar (see CLAUDE.md) for an analogous nesting problem.
  */
 export function GallerySubmissionModal({
   targetSet,
@@ -119,8 +134,8 @@ export function GallerySubmissionModal({
   }, [step]);
 
   if (!configured) {
-    return (
-      <div className="modal-overlay" role="presentation" onClick={onClose}>
+    return createPortal(
+      <div className="modal-overlay gallery-submit-overlay" role="presentation" onClick={onClose}>
         <div
           className="modal gallery-submit-modal"
           role="dialog"
@@ -135,7 +150,8 @@ export function GallerySubmissionModal({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
@@ -263,8 +279,8 @@ export function GallerySubmissionModal({
 
   const secondsLeft = Math.max(0, Math.ceil((cooldownUntilRef.current - now) / 1000));
 
-  return (
-    <div className="modal-overlay" role="presentation" onClick={onClose}>
+  return createPortal(
+    <div className="modal-overlay gallery-submit-overlay" role="presentation" onClick={onClose}>
       <div
         className="modal modal-lg gallery-submit-modal"
         role="dialog"
@@ -436,6 +452,7 @@ export function GallerySubmissionModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

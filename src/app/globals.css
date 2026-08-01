@@ -600,6 +600,17 @@ body {
   padding: 20px;
   animation: modal-fade-in .15s ease;
 }
+/*
+ * Gallery submission's own modals (GallerySubmissionModal.tsx,
+ * SetPickerModal.tsx) show their own debossed-canvas preview, so
+ * ConfirmDialog's light 0.42 dimming lets the page's REAL preview canvas
+ * stay distractingly visible behind them, especially on dark paper tones
+ * (which barely change under a light dark overlay). A stronger backdrop
+ * keeps focus on the modal's own preview instead of looking like two
+ * previews are stacked. Scoped to this feature only; ConfirmDialog keeps
+ * its lighter dimming.
+ */
+.gallery-submit-overlay { background: rgba(15,13,10,.82); }
 .modal {
   width: 100%; max-width: 360px;
   background: var(--panel);
@@ -616,7 +627,23 @@ body {
 /* Gallery submission: wider multi-step modal, extends .modal rather than
    replacing it (GallerySubmissionModal.tsx, SetPickerModal.tsx). */
 .modal-lg { max-width: 460px; max-height: 90vh; overflow-y: auto; }
-.gallery-submit-modal .gallery-preview { margin: 0 0 16px; }
+/*
+ * The submitted TextBlock(s) carry a fontSize tuned for the real studio
+ * canvas (often 600-1200px wide), but this preview renders them at a much
+ * narrower SUBMISSION_PREVIEW_LOGICAL_W (320px). At that width the same
+ * text can wrap into many more lines, and computeLayout's "auto" aspect
+ * mode has no upper bound tied to preview context, only its own
+ * MAX_LOGICAL_H clamp (1100 logical px), so the rendered canvas can come
+ * back far taller than a "preview thumbnail" should ever be, blowing out
+ * the whole modal's layout. `.gallery-preview` (globals.css, shared with
+ * the gallery pages) already sets `overflow: hidden` but has no height
+ * cap of its own, so it just grows to fit whatever canvas lands inside it;
+ * capping max-height HERE (scoped to this modal only, not the shared
+ * class) is what actually gives that existing overflow:hidden something
+ * to clip. The design still renders faithfully at its real 320px width;
+ * only excess height beyond a sane preview size is cropped, not scaled.
+ */
+.gallery-submit-modal .gallery-preview { margin: 0 0 16px; max-height: 320px; }
 .gallery-submit-notice {
   margin: 0 0 16px; padding: 10px 14px;
   border: 1px solid var(--line); border-left: 3px solid var(--accent);
