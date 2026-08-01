@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
-import { MAX_TEXT_LENGTH, PAD_X } from "@/lib/deboss/constants";
+import { CENTER_SNAP_THRESHOLD_PX, MAX_TEXT_LENGTH, PAD_X } from "@/lib/deboss/constants";
 import { computeLayout, isPaperDark, measureBlockBox } from "@/lib/deboss/engine";
 import { stripTags } from "@/lib/deboss/richtext";
 import type { Layout, TextBlock } from "@/types/deboss";
@@ -102,7 +102,7 @@ type BlockOverlayProps = {
  * work on the whole block without a character selection).
  */
 function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditing }: BlockOverlayProps) {
-  const { state, canvasRef, textRevision, updateTextBlock, setBlockPosition, deleteTextBlock, setSelectedBlockId, setEditingBlockId } = studio;
+  const { state, canvasRef, textRevision, updateTextBlock, setBlockPosition, deleteTextBlock, setSelectedBlockId, setEditingBlockId, setActiveGuides } = studio;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -193,6 +193,17 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
       centerXNorm = Math.min(1 - halfWNorm, Math.max(halfWNorm, centerXNorm));
       centerYNorm = Math.min(1 - halfHNorm, Math.max(halfHNorm, centerYNorm));
 
+      // Canva-style center snap: centerXNorm/centerYNorm already represent
+      // where the block's rendered center will land, so snapping them to
+      // exactly 0.5 here (before the align-aware offset below) produces
+      // "block's center exactly at canvas center" regardless of align,
+      // with no special-casing needed.
+      const snapV = Math.abs(centerXNorm - 0.5) * layout.logicalW <= CENTER_SNAP_THRESHOLD_PX;
+      const snapH = Math.abs(centerYNorm - 0.5) * layout.logicalH <= CENTER_SNAP_THRESHOLD_PX;
+      if (snapV) centerXNorm = 0.5;
+      if (snapH) centerYNorm = 0.5;
+      setActiveGuides({ v: snapV, h: snapH });
+
       // Base center (the box's center when textAnchor is 0.5/0.5, i.e. dx=0)
       // depends on align; the drag offset is the difference from there, the
       // same relationship buildBlockMask's tx formulas encode.
@@ -209,12 +220,13 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
 
       setBlockPosition(block.id, 0.5 + dxNorm, 0.5 + dyNorm);
     },
-    [state, canvasRef, block.id, block.align, contentBox, setBlockPosition, setSelectedBlockId],
+    [state, canvasRef, block.id, block.align, contentBox, setBlockPosition, setSelectedBlockId, setActiveGuides],
   );
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const wasDragging = draggingRef.current;
+      setActiveGuides({ v: false, h: false });
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
       } catch {
@@ -234,7 +246,7 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
         setSelectedBlockId(block.id);
       }
     },
-    [block.id, isSelected, setSelectedBlockId, setEditingBlockId],
+    [block.id, isSelected, setSelectedBlockId, setEditingBlockId, setActiveGuides],
   );
 
   // Plain preview colour while editing must adapt to the paper the same way
@@ -320,7 +332,7 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
 }
 
 export function CanvasTextOverlay({ studio }: { studio: DebossStudio }) {
-  const { state, canvasRef, selectedBlockId, setSelectedBlockId, editingBlockId, addTextBlock } = studio;
+  const { state, canvasRef, selectedBlockId, setSelectedBlockId, editingBlockId, addTextBlock, activeGuides } = studio;
   const [boxes, setBoxes] = useState<Record<string, { content: Box; edit: Box }>>({});
   const [canvasBox, setCanvasBox] = useState<Box | null>(null);
   const bgPointerStartRef = useRef<{ x: number; y: number; hadActiveBlock: boolean } | null>(null);
@@ -408,6 +420,20 @@ export function CanvasTextOverlay({ studio }: { studio: DebossStudio }) {
         onPointerUp={handleBackgroundPointerUp}
         aria-hidden="true"
       />
+      {activeGuides.v && (
+        <div
+          className="canvas-align-guide canvas-align-guide-v"
+          style={{ left: canvasBox.left + canvasBox.width / 2, top: canvasBox.top, height: canvasBox.height }}
+          aria-hidden="true"
+        />
+      )}
+      {activeGuides.h && (
+        <div
+          className="canvas-align-guide canvas-align-guide-h"
+          style={{ top: canvasBox.top + canvasBox.height / 2, left: canvasBox.left, width: canvasBox.width }}
+          aria-hidden="true"
+        />
+      )}
       {state.textBlocks.map((block) => {
         const box = boxes[block.id];
         if (!box) return null;

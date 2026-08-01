@@ -38,6 +38,8 @@ export const MAX_SET_NAME_LENGTH = 40;
 export const MAX_CUSTOM_SETS = 24;
 /** Cap on text blocks per document: keeps the canvas usable and the render loop bounded. */
 export const MAX_TEXT_BLOCKS = 20;
+/** Logical-px tolerance for the Canva-style center alignment guides (CanvasTextOverlay.tsx, BrandingHandle.tsx): within this distance of the canvas's true horizontal/vertical center, a dragged block or the branding watermark snaps exactly onto it and a guide line shows. */
+export const CENTER_SNAP_THRESHOLD_PX = 6;
 /** Fixed (not randomly generated) id for the sole block of a fresh/migrated document, so DEFAULT_STATE stays deterministic. Runtime-created blocks use generateId() instead. */
 export const DEFAULT_BLOCK_ID = "default";
 /** Filename used for both the download and native-share export. */

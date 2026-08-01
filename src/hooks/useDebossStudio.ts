@@ -98,6 +98,14 @@ export function useDebossStudio(
   // buildExportCanvas, so export is unaffected regardless of live editing.
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  // Canva-style center alignment guides, shown while dragging a text block
+  // (CanvasTextOverlay.tsx) or the branding watermark (BrandingHandle.tsx).
+  // Lives here, not in either component, because those two are independent
+  // siblings under PreviewStage.tsx and only one can be dragging at a time;
+  // this is the same shared-ephemeral-UI-state pattern already used for
+  // selectedBlockId/editingBlockId above. Never persisted, never affects
+  // rendering/export: purely a transient drag aid.
+  const [activeGuides, setActiveGuides] = useState<{ v: boolean; h: boolean }>({ v: false, h: false });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -737,6 +745,8 @@ export function useDebossStudio(
     setSelectedBlockId,
     editingBlockId,
     setEditingBlockId,
+    activeGuides,
+    setActiveGuides,
     canvasRef,
     stageRef,
     updateTextBlock,

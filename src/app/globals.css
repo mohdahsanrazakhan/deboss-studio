@@ -322,6 +322,25 @@ body {
   cursor: text;
 }
 
+/* Canva-style center alignment guides (CanvasTextOverlay.tsx,
+   BrandingHandle.tsx): shown only while dragging, within
+   CENTER_SNAP_THRESHOLD_PX of the canvas's true center. A bright magenta
+   distinct from the app's own muted-bronze --accent, so it reads as a
+   transient tool aid rather than UI chrome, matching the familiar
+   Canva convention; the light halo keeps it visible on the dark "Black"
+   paper tone too, the same reasoning already applied to
+   .branding-handle's own selection ring. pointer-events: none so it never
+   intercepts the drag it's reacting to. */
+.canvas-align-guide {
+  position: absolute;
+  pointer-events: none;
+  background: #ff2fb0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.5);
+  z-index: 3;
+}
+.canvas-align-guide-v { width: 1px; }
+.canvas-align-guide-h { height: 1px; }
+
 /* Editing state: a transparent, borderless container exactly matching
    buildMask's own wrap-width/position math (engine.ts), holding the real
    RichTextEditor. Font-family/size/line-height/letter-spacing/align/dir are

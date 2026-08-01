@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
+import { CENTER_SNAP_THRESHOLD_PX } from "@/lib/deboss/constants";
 import { measureBrandingBox } from "@/lib/deboss/engine";
 
 type Box = { left: number; top: number; width: number; height: number };
@@ -22,7 +23,7 @@ type Box = { left: number; top: number; width: number; height: number };
  * (state alone doesn't change on a pure window resize).
  */
 export function BrandingHandle({ studio }: { studio: DebossStudio }) {
-  const { state, canvasRef, setBrandingPosition } = studio;
+  const { state, canvasRef, setBrandingPosition, setActiveGuides } = studio;
   const [box, setBox] = useState<Box | null>(null);
   const [dragging, setDragging] = useState(false);
   const draggingRef = useRef(false);
@@ -81,20 +82,31 @@ export function BrandingHandle({ studio }: { studio: DebossStudio }) {
       let y = (e.clientY - rect.top) / rect.height;
       x = Math.min(1 - halfWNorm, Math.max(halfWNorm, x));
       y = Math.min(1 - halfHNorm, Math.max(halfHNorm, y));
+
+      // Same Canva-style center snap as CanvasTextOverlay.tsx's BlockOverlay
+      // (see that file for the full reasoning); the two draggables share
+      // studio.activeGuides since only one can be dragging at a time.
+      const snapV = Math.abs(x - 0.5) * w <= CENTER_SNAP_THRESHOLD_PX;
+      const snapH = Math.abs(y - 0.5) * h <= CENTER_SNAP_THRESHOLD_PX;
+      if (snapV) x = 0.5;
+      if (snapH) y = 0.5;
+      setActiveGuides({ v: snapV, h: snapH });
+
       setBrandingPosition(x, y);
     },
-    [state, canvasRef, setBrandingPosition],
+    [state, canvasRef, setBrandingPosition, setActiveGuides],
   );
 
   const endDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     draggingRef.current = false;
     setDragging(false);
+    setActiveGuides({ v: false, h: false });
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
       /* pointer capture already released */
     }
-  }, []);
+  }, [setActiveGuides]);
 
   if (!box) return null;
 
