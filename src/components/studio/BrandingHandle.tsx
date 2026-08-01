@@ -40,7 +40,7 @@ export function BrandingHandle({ studio }: { studio: DebossStudio }) {
         setBox(null);
         return;
       }
-      const { width, height } = measureBrandingBox(state, w);
+      const { width, height } = measureBrandingBox(state);
       setBox({
         left: canvas.offsetLeft + state.brandingX * w - width / 2,
         top: canvas.offsetTop + state.brandingY * h - height / 2,
@@ -72,7 +72,7 @@ export function BrandingHandle({ studio }: { studio: DebossStudio }) {
       const h = canvas.offsetHeight;
       if (!rect.width || !rect.height || !w || !h) return;
 
-      const { width, height } = measureBrandingBox(state, w);
+      const { width, height } = measureBrandingBox(state);
       // Cap at 0.5 so a branding box wider/taller than the canvas itself
       // can't invert the clamp range below.
       const halfWNorm = Math.min(0.5, width / 2 / w);

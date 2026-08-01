@@ -6,6 +6,8 @@ import type { DebossStudio } from "@/hooks/useDebossStudio";
 import type { AspectId, FontFamily } from "@/types/deboss";
 import {
   ASPECT_OPTIONS,
+  BRANDING_FONT_SIZE_MAX,
+  BRANDING_FONT_SIZE_MIN,
   FONT_OPTIONS,
   MAX_BRANDING_LENGTH,
   MAX_SET_NAME_LENGTH,
@@ -14,6 +16,7 @@ import {
   SLIDER_DEFS,
   rgbToHex,
 } from "@/lib/deboss/constants";
+import { resolveBrandingFont, resolveBrandingFontSize } from "@/lib/deboss/engine";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { RequestPostButton } from "./RequestPostButton";
 import { SectionSheet } from "./SectionSheet";
@@ -52,6 +55,8 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     setEditingBlockId,
     setBlockFont,
     setBrandingText,
+    setBrandingFont,
+    setBrandingFontSize,
     setSlider,
     setPaper,
     setTint,
@@ -379,7 +384,40 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
           />
         </div>
         {state.brandingText.trim() && (
-          <p className="field-hint">Drag it on the canvas to reposition.</p>
+          <>
+            {/* Both show the RESOLVED value: with no override set, this is
+                textBlocks[0]'s own font/proportional size (see
+                resolveBrandingFont/resolveBrandingFontSize, engine.ts), so
+                branding stays visually symmetric with the main text by
+                default. Picking a value here overrides branding ONLY,
+                never the main text block. */}
+            <div className="field-row">
+              <label htmlFor="brandingFont">Branding font</label>
+              <select
+                id="brandingFont"
+                value={resolveBrandingFont(state)}
+                onChange={(e) => void setBrandingFont(e.target.value as FontFamily)}
+              >
+                {FONT_OPTIONS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field-row">
+              <label htmlFor="brandingSize">Branding size</label>
+              <input
+                type="number"
+                id="brandingSize"
+                min={BRANDING_FONT_SIZE_MIN}
+                max={BRANDING_FONT_SIZE_MAX}
+                value={Math.round(resolveBrandingFontSize(state))}
+                onChange={(e) => setBrandingFontSize(Number(e.target.value))}
+              />
+            </div>
+            <p className="field-hint">Drag it on the canvas to reposition.</p>
+          </>
         )}
 
         <div className="field-row">

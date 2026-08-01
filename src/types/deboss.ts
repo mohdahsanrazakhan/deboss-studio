@@ -94,6 +94,10 @@ export interface DebossState {
   /** Normalized (0-1) center position of the branding text within the canvas. */
   brandingX: number;
   brandingY: number;
+  /** null = auto-track textBlocks[0]'s font (see resolveBrandingFont, engine.ts); a concrete value = independently overridden for branding only. */
+  brandingFont: FontFamily | null;
+  /** null = auto-derive proportionally from textBlocks[0]'s fontSize (see resolveBrandingFontSize, engine.ts); a concrete value = independently overridden. */
+  brandingFontSize: number | null;
 }
 
 export type PresetId = "soft" | "deep" | "letterpress" | "luxury";
@@ -122,7 +126,7 @@ export interface CustomSet {
   name: string;
   createdAt: number;
   /** Excludes `textBlocks` entirely (a Set is a reusable look, not pinned content, styling, or position) and the branding fields (personal metadata orthogonal to "the look," not part of a saved style). */
-  state: Omit<DebossState, "textBlocks" | "brandingText" | "brandingX" | "brandingY">;
+  state: Omit<DebossState, "textBlocks" | "brandingText" | "brandingX" | "brandingY" | "brandingFont" | "brandingFontSize">;
 }
 
 /**

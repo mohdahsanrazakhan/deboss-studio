@@ -35,6 +35,8 @@ import type {
   TextBlock,
 } from "@/types/deboss";
 import {
+  BRANDING_FONT_SIZE_MAX,
+  BRANDING_FONT_SIZE_MIN,
   BRANDING_TEXT_STORAGE_KEY,
   CUSTOM_SETS_STORAGE_KEY,
   DEFAULT_HINT,
@@ -62,6 +64,7 @@ import {
   computeLayout,
   drawScene,
   ensureFont,
+  resolveBrandingFontSize,
 } from "@/lib/deboss/engine";
 
 export function useDebossStudio(
@@ -483,6 +486,21 @@ export function useDebossStudio(
     setState((s) => ({ ...s, brandingX: clamp(x), brandingY: clamp(y) }));
   }, []);
 
+  /** Independently overrides branding's font (leaving null = auto-track textBlocks[0]'s font, see resolveBrandingFont in engine.ts); mirrors setBlockFont's ensureFont-then-force-repaint dance since the picked font may not be loaded at branding's own size yet. */
+  const setBrandingFont = useCallback(async (font: FontFamily) => {
+    setState((s) => ({ ...s, brandingFont: font }));
+    const size = resolveBrandingFontSize({ ...stateRef.current, brandingFont: font });
+    await ensureFont(font, size);
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(renderPreview);
+  }, [renderPreview]);
+
+  /** Independently overrides branding's size (null = auto-derive proportionally from textBlocks[0]'s fontSize); clamped the same as the auto-derived default. */
+  const setBrandingFontSize = useCallback((size: number) => {
+    const clamped = Math.min(BRANDING_FONT_SIZE_MAX, Math.max(BRANDING_FONT_SIZE_MIN, size));
+    setState((s) => ({ ...s, brandingFontSize: clamped }));
+  }, []);
+
   const setSlider = useCallback((id: SliderId, value: number) => {
     setActivePreset(null); // manual tweak deactivates the preset/set chip
     setActiveCustomSet(null);
@@ -756,6 +774,8 @@ export function useDebossStudio(
     deleteTextBlock,
     setBrandingText,
     setBrandingPosition,
+    setBrandingFont,
+    setBrandingFontSize,
     setSlider,
     setPaper,
     setTransparent,

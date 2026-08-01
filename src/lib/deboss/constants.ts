@@ -48,22 +48,12 @@ export const EXPORT_FILENAME = "text-deboss.png";
 export const MAX_BRANDING_LENGTH = 40;
 /** localStorage key for the remembered branding text (not its position, which lives in DebossState like everything else and resets per document). */
 export const BRANDING_TEXT_STORAGE_KEY = "textDebossStudio.brandingText";
-/** Fixed clean face for the branding watermark, independent of the main text's font (an Instagram handle doesn't need Nastaliq/Naskh treatment); already loaded as a real webfont for the UI, see the Google Fonts URL in app/layout.tsx. */
-export const BRANDING_FONT_FAMILY = "Inter";
-/** Branding font size is `logicalW * BRANDING_FONT_SIZE_RATIO`, clamped to this range (logical/unscaled px). */
+/** Auto-derived branding font size is `textBlocks[0].fontSize * BRANDING_DEFAULT_SIZE_RATIO`, clamped to this range (logical/unscaled px); the same clamp also bounds a manual override (see resolveBrandingFontSize, engine.ts). */
 export const BRANDING_FONT_SIZE_MIN = 14;
 export const BRANDING_FONT_SIZE_MAX = 28;
-export const BRANDING_FONT_SIZE_RATIO = 0.035;
-/**
- * Flat, semi-transparent watermark tones: PAPER_TONES includes "Black"
- * (#181614), not just light stock, so a single fixed dark fill goes
- * invisible on dark paper. `getBrandingFill` (engine.ts) picks between
- * these two based on the current paper's own luminance, the same way a
- * real print shop would choose light or dark foil depending on the stock.
- */
-export const BRANDING_FILL_ON_LIGHT_PAPER = "rgba(43,40,35,.45)";
-export const BRANDING_FILL_ON_DARK_PAPER = "rgba(255,255,255,.55)";
-/** Perceived-luminance (0-255) cutoff below which paper counts as "dark". */
+/** Branding stays a visibly smaller watermark than the main text by default, not the same scale. */
+export const BRANDING_DEFAULT_SIZE_RATIO = 0.35;
+/** Perceived-luminance (0-255) cutoff below which paper counts as "dark" (isPaperDark, engine.ts; used by CanvasTextOverlay.tsx's live-editing overlay colour). */
 export const BRANDING_PAPER_LUMINANCE_THRESHOLD = 140;
 
 export const DEFAULT_TEXT = "بسمِ اللہ\nالرحمٰن الرحیم";
@@ -103,6 +93,8 @@ export const DEFAULT_STATE: DebossState = {
   brandingText: "",
   brandingX: 0.86,
   brandingY: 0.9,
+  brandingFont: null,
+  brandingFontSize: null,
 };
 
 export const FONT_OPTIONS: { value: FontFamily; label: string }[] = [

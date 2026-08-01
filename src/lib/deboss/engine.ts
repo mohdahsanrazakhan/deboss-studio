@@ -21,16 +21,14 @@
  * agnostic: it takes a DebossState and a target canvas, nothing else.
  */
 
-import type { DebossState, Layout, MeasuredFragment, MeasuredLine, PaperColor, SceneLayout, TextBlock, TextRun } from "@/types/deboss";
+import type { DebossState, FontFamily, Layout, MeasuredFragment, MeasuredLine, PaperColor, SceneLayout, TextBlock, TextRun } from "@/types/deboss";
 import {
   ASPECT_RATIOS,
-  BRANDING_FILL_ON_DARK_PAPER,
-  BRANDING_FILL_ON_LIGHT_PAPER,
-  BRANDING_FONT_FAMILY,
+  BRANDING_DEFAULT_SIZE_RATIO,
   BRANDING_FONT_SIZE_MAX,
   BRANDING_FONT_SIZE_MIN,
-  BRANDING_FONT_SIZE_RATIO,
   BRANDING_PAPER_LUMINANCE_THRESHOLD,
+  DEFAULT_TEXT_BLOCK,
   MAX_LOGICAL_H,
   MIN_LOGICAL_H,
   PAD_X,
@@ -414,15 +412,22 @@ export function computeLayout(state: DebossState, logicalW: number): SceneLayout
 }
 
 /* -------------------------------------------------------------------
-   Branding watermark: a second, independently-positioned, flat (not
-   debossed) text layer, e.g. an Instagram handle. Deliberately kept
-   simple: single line, fixed font, drawn as a plain fillText after the
-   main engraving so it reads as a quiet signature rather than competing
-   with the artwork. `getBrandingFontSize` is the ONE formula shared by
-   drawing (drawBranding, below) and by the drag overlay's hit-box sizing
-   (BrandingHandle.tsx) — they must stay identical or the draggable
-   hit-box drifts from what's actually drawn, the same principle already
-   documented for letterSpacing/lineHeightFactor's measure-vs-draw match.
+   Branding watermark: a second, independently-positioned text layer,
+   e.g. an Instagram handle. Reuses the SAME glyph-mask/inner-shadow
+   engraving pipeline every text block goes through (via a throwaway
+   synthetic TextBlock, see drawBranding below), so it looks like a real
+   part of the design rather than printed on top. Its font/size default
+   to tracking `state.textBlocks[0]` live (see resolveBrandingFont/
+   resolveBrandingFontSize) so it stays visually symmetric with the main
+   text with zero extra sync code, but can be independently overridden
+   for branding only via `state.brandingFont`/`brandingFontSize`
+   (useDebossStudio.ts's setBrandingFont/setBrandingFontSize).
+   `resolveBrandingFontSize` is the ONE formula shared by drawing
+   (drawBranding, below, via measureBrandingBox) and by the drag
+   overlay's hit-box sizing (BrandingHandle.tsx): they must stay
+   identical or the draggable hit-box drifts from what's actually drawn,
+   the same principle already documented for letterSpacing/
+   lineHeightFactor's measure-vs-draw match.
    ------------------------------------------------------------------- */
 /** Perceived luminance (ITU-R BT.601), 0 (black) - 255 (white). */
 function paperLuminance({ r, g, b }: PaperColor): number {
@@ -431,42 +436,125 @@ function paperLuminance({ r, g, b }: PaperColor): number {
 
 /**
  * PAPER_TONES includes "Black", not just light stock: any fixed-colour UI
- * drawn or overlaid on top of the paper (the branding watermark, and the
- * in-place text editor's plain preview colour while typing) needs to pick
- * light-on-dark or dark-on-light per paper, or it goes invisible exactly
- * like the branding watermark once did on "Black" before this existed.
+ * overlaid on top of the paper (the in-place text editor's plain preview
+ * colour while typing) needs to pick light-on-dark or dark-on-light per
+ * paper, or it goes invisible on it.
  */
 export function isPaperDark(paper: PaperColor): boolean {
   return paperLuminance(paper) < BRANDING_PAPER_LUMINANCE_THRESHOLD;
 }
 
-function getBrandingFill(paper: PaperColor): string {
-  return isPaperDark(paper) ? BRANDING_FILL_ON_DARK_PAPER : BRANDING_FILL_ON_LIGHT_PAPER;
+/** null brandingFont means "auto-track the first text block's font"; falls back to DEFAULT_TEXT_BLOCK's font only for the edge case of zero text blocks. */
+export function resolveBrandingFont(state: DebossState): FontFamily {
+  return state.brandingFont ?? state.textBlocks[0]?.font ?? DEFAULT_TEXT_BLOCK.font;
 }
-export function getBrandingFontSize(logicalW: number): number {
+
+/** null brandingFontSize means "derive proportionally from the first text block's fontSize" (stays a smaller watermark, not the same scale); a manual override is clamped to the same range the auto-derived value is. */
+export function resolveBrandingFontSize(state: DebossState): number {
+  if (state.brandingFontSize != null) {
+    return Math.min(BRANDING_FONT_SIZE_MAX, Math.max(BRANDING_FONT_SIZE_MIN, state.brandingFontSize));
+  }
+  const mainSize = state.textBlocks[0]?.fontSize ?? DEFAULT_TEXT_BLOCK.fontSize;
   return Math.min(
     BRANDING_FONT_SIZE_MAX,
-    Math.max(BRANDING_FONT_SIZE_MIN, logicalW * BRANDING_FONT_SIZE_RATIO),
+    Math.max(BRANDING_FONT_SIZE_MIN, mainSize * BRANDING_DEFAULT_SIZE_RATIO),
   );
 }
 
 /** Logical (unscaled) px box for the branding text, single line, used both to draw it and to size/clamp its drag handle. */
 export function measureBrandingBox(
   state: DebossState,
-  logicalW: number,
 ): { width: number; height: number } {
-  const fontSize = getBrandingFontSize(logicalW);
+  const font = resolveBrandingFont(state);
+  const fontSize = resolveBrandingFontSize(state);
   const measureCtx = getMeasureCtx();
-  measureCtx.font = `500 ${fontSize}px "${BRANDING_FONT_FAMILY}"`;
+  measureCtx.font = `${fontSize}px "${font}"`;
   const width = measureCtx.measureText(state.brandingText.trim()).width;
   return { width, height: fontSize * 1.2 };
 }
 
-/** Flat watermark pass: no-op when there's no branding text. Drawn last by drawScene, unconditionally, so it renders even when there are no text blocks at all. */
+/**
+ * Composites one already-drawn glyph mask (solid black on transparent)
+ * into the engraved look: recess floor, optional colour tint, dark inner
+ * shadow, light inner highlight, all driven by the SAME document-level
+ * depth/shadow/highlight/blur/tint/tintStrength/shadowColor every text
+ * block already shares. Extracted so drawScene's per-block loop and
+ * drawBranding (below) both go through identical compositing, no
+ * duplicated engraving logic between "real" blocks and the watermark.
+ */
+function compositeEngravedGlyph(
+  ctx: CanvasRenderingContext2D,
+  mask: HTMLCanvasElement,
+  state: DebossState,
+  pxW: number,
+  pxH: number,
+  s: number,
+): void {
+  const blur = state.blur * s;
+  const off = Math.max(state.depth * s, 0.01);
+
+  // Recess floor: seat the letters a hair into the sheet.
+  const floor = document.createElement("canvas");
+  floor.width = pxW;
+  floor.height = pxH;
+  const fctx = floor.getContext("2d");
+  if (fctx) {
+    fctx.drawImage(mask, 0, 0);
+    fctx.globalCompositeOperation = "source-in";
+    fctx.fillStyle = "rgba(60,50,38,1)";
+    fctx.fillRect(0, 0, pxW, pxH);
+    ctx.globalAlpha = 0.05 + state.depth / 90; // very subtle
+    ctx.drawImage(floor, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+
+  // Optional colour tint.
+  if (state.tintStrength > 0) {
+    const { r, g, b } = state.tint;
+    const tint = document.createElement("canvas");
+    tint.width = pxW;
+    tint.height = pxH;
+    const tctx = tint.getContext("2d");
+    if (tctx) {
+      tctx.drawImage(mask, 0, 0);
+      tctx.globalCompositeOperation = "source-in";
+      tctx.fillStyle = `rgb(${r},${g},${b})`;
+      tctx.fillRect(0, 0, pxW, pxH);
+      ctx.globalAlpha = state.tintStrength;
+      ctx.drawImage(tint, 0, 0);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Dark inner shadow on the upper-left walls (away from the light).
+  const { r: sr, g: sg, b: sb } = state.shadowColor;
+  const dark = innerShadow(mask, `rgb(${sr},${sg},${sb})`, blur, off, off);
+  ctx.globalAlpha = state.shadow;
+  ctx.drawImage(dark, 0, 0);
+
+  // White inner highlight on the lower-right walls (facing the light).
+  const light = innerShadow(mask, "rgb(255,255,255)", blur, -off, -off);
+  ctx.globalAlpha = state.highlight;
+  ctx.drawImage(light, 0, 0);
+
+  ctx.globalAlpha = 1;
+}
+
+/**
+ * Debossed watermark pass: no-op when there's no branding text. Drawn
+ * last by drawScene, unconditionally, so it renders even when there are
+ * no text blocks at all. Synthesizes a throwaway single-line TextBlock
+ * (align:"center", textAnchorX/Y = brandingX/Y) and Layout, then reuses
+ * buildBlockMask + compositeEngravedGlyph exactly like a real block. For
+ * a center-aligned block these reduce to tx = textAnchorX*logicalW and
+ * startY = textAnchorY*logicalH, i.e. bytewise identical positioning to
+ * the flat pass this replaced (state.brandingX*pxW / brandingY*pxH), so
+ * only the rendering technique changed, not where it lands.
+ */
 function drawBranding(
   ctx: CanvasRenderingContext2D,
   state: DebossState,
-  logicalW: number,
+  layout: SceneLayout,
   pxW: number,
   pxH: number,
   s: number,
@@ -474,14 +562,29 @@ function drawBranding(
   const text = state.brandingText.trim();
   if (!text) return;
 
-  const fontSizePx = getBrandingFontSize(logicalW) * s;
-  ctx.save();
-  ctx.font = `500 ${fontSizePx}px "${BRANDING_FONT_FAMILY}"`;
-  ctx.fillStyle = getBrandingFill(state.paper);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, state.brandingX * pxW, state.brandingY * pxH);
-  ctx.restore();
+  const font = resolveBrandingFont(state);
+  const fontSize = resolveBrandingFontSize(state);
+
+  const brandingBlock: TextBlock = {
+    id: "__branding__",
+    text,
+    font,
+    align: "center",
+    fontSize,
+    letterSpacing: 0,
+    lineHeightFactor: 1,
+    textAnchorX: state.brandingX,
+    textAnchorY: state.brandingY,
+  };
+  const brandingLayout: Layout = {
+    lines: [text],
+    lineHeight: fontSize * 1.2,
+    logicalW: layout.logicalW,
+    logicalH: layout.logicalH,
+  };
+
+  const mask = buildBlockMask(brandingBlock, pxW, pxH, s, brandingLayout);
+  compositeEngravedGlyph(ctx, mask, state, pxW, pxH, s);
 }
 
 /* -------------------------------------------------------------------
@@ -741,70 +844,19 @@ export function drawScene(
   // in place (suppressBlockId). Depth/shadow/highlight/blur/texture/tint
   // are document-level, shared by every block; only the glyph mask differs
   // per block.
-  const blur = state.blur * s;
-  const off = Math.max(state.depth * s, 0.01);
-
   for (const { id, layout: blockLayout } of layout.blocks) {
     if (id === suppressBlockId) continue;
     const block = state.textBlocks.find((b) => b.id === id);
     if (!block || !stripTags(block.text).trim()) continue;
 
-    // (b) Glyph mask.
+    // (b) Glyph mask, (c)-(e) recess/tint/shadow/highlight.
     const mask = buildBlockMask(block, pxW, pxH, s, blockLayout);
-
-    // (c) Recess floor: seat the letters a hair into the sheet.
-    //     A faint uniform darkening inside the glyph adds believable depth.
-    const floor = document.createElement("canvas");
-    floor.width = pxW;
-    floor.height = pxH;
-    const fctx = floor.getContext("2d");
-    if (fctx) {
-      fctx.drawImage(mask, 0, 0);
-      fctx.globalCompositeOperation = "source-in";
-      fctx.fillStyle = "rgba(60,50,38,1)";
-      fctx.fillRect(0, 0, pxW, pxH);
-      ctx.globalAlpha = 0.05 + state.depth / 90; // very subtle
-      ctx.drawImage(floor, 0, 0);
-      ctx.globalAlpha = 1;
-    }
-
-    // (c.5) Optional colour tint: infuses the glyph with a chosen colour
-    //       while leaving it under the shadow/highlight so the engraving
-    //       still reads as pressed into the paper, not printed on top.
-    if (state.tintStrength > 0) {
-      const { r, g, b } = state.tint;
-      const tint = document.createElement("canvas");
-      tint.width = pxW;
-      tint.height = pxH;
-      const tctx = tint.getContext("2d");
-      if (tctx) {
-        tctx.drawImage(mask, 0, 0);
-        tctx.globalCompositeOperation = "source-in";
-        tctx.fillStyle = `rgb(${r},${g},${b})`;
-        tctx.fillRect(0, 0, pxW, pxH);
-        ctx.globalAlpha = state.tintStrength;
-        ctx.drawImage(tint, 0, 0);
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    // (d) Dark inner shadow on the upper-left walls (away from the light).
-    const { r: sr, g: sg, b: sb } = state.shadowColor;
-    const dark = innerShadow(mask, `rgb(${sr},${sg},${sb})`, blur, off, off);
-    ctx.globalAlpha = state.shadow;
-    ctx.drawImage(dark, 0, 0);
-
-    // (e) White inner highlight on the lower-right walls (facing the light).
-    const light = innerShadow(mask, "rgb(255,255,255)", blur, -off, -off);
-    ctx.globalAlpha = state.highlight;
-    ctx.drawImage(light, 0, 0);
-
-    ctx.globalAlpha = 1;
+    compositeEngravedGlyph(ctx, mask, state, pxW, pxH, s);
   }
 
   // (f) Branding watermark: always last, on top, regardless of whether
   // there are any text blocks (see drawBranding's own comment).
-  drawBranding(ctx, state, layout.logicalW, pxW, pxH, s);
+  drawBranding(ctx, state, layout, pxW, pxH, s);
 }
 
 /* -------------------------------------------------------------------
