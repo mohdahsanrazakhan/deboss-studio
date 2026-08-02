@@ -39,7 +39,25 @@ export const SUBMISSION_PREVIEW_LOGICAL_W = 320;
  * fine, since Apps Script has no equivalent per-variable cap). JPEG's
  * lossy compression handles that same noise far better.
  */
-export const THUMBNAIL_LOGICAL_W = 240;
+export const THUMBNAIL_LOGICAL_W = 160;
 export const THUMBNAIL_SCALE = 1;
 /** 0-1; tuned to keep a THUMBNAIL_LOGICAL_W-wide debossed thumbnail comfortably under EmailJS's 50KB template-variable cap. */
-export const THUMBNAIL_JPEG_QUALITY = 0.6;
+export const THUMBNAIL_JPEG_QUALITY = 0.5;
+
+/**
+ * Safety net on top of the above: EmailJS's own dashboard "Test Email"
+ * button sends a tiny placeholder string for `thumbnail`, not a real
+ * image, so it can pass even when a real submission's actual (much
+ * larger) base64 thumbnail would still 413. Rather than tune
+ * THUMBNAIL_LOGICAL_W/THUMBNAIL_JPEG_QUALITY ever-smaller chasing every
+ * possible design's worst case (heavy texture/dark paper/large canvas all
+ * push JPEG size up), sendSubmissionNotification (emailjs.ts) measures the
+ * ACTUAL serialized payload before sending and drops the thumbnail (with a
+ * short text placeholder) if it would exceed this budget, so the
+ * notification email itself never silently disappears over an oversized
+ * image. Set comfortably under EmailJS's 50KB hard cap to leave headroom
+ * for the other template params (display_name/description/state_json/etc)
+ * and JSON-encoding overhead. The full thumbnail is always still available
+ * in the paired Google Sheets row (sheet.ts), which has no equivalent cap.
+ */
+export const EMAILJS_NOTIFY_PAYLOAD_SAFE_LIMIT = 42_000;

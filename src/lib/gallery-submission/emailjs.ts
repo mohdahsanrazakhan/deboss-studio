@@ -1,4 +1,5 @@
 import { gallerySubmissionConfig } from "@/config/gallery-submission";
+import { EMAILJS_NOTIFY_PAYLOAD_SAFE_LIMIT } from "./constants";
 import type { SubmissionPayload } from "./types";
 
 const EMAILJS_SEND_URL = "https://api.emailjs.com/api/v1.0/email/send";
@@ -39,7 +40,7 @@ export async function sendSubmissionNotification(
   payload: SubmissionPayload,
   thumbnailDataUrl: string,
 ): Promise<void> {
-  await sendEmail(gallerySubmissionConfig.emailjsNotifyTemplateId, {
+  const params: Record<string, string> = {
     display_name: payload.displayName,
     from_email: payload.email,
     description: payload.description,
@@ -47,5 +48,15 @@ export async function sendSubmissionNotification(
     state_json: payload.stateJson,
     thumbnail: thumbnailDataUrl,
     source_kind: payload.sourceKind,
-  });
+  };
+  // See EMAILJS_NOTIFY_PAYLOAD_SAFE_LIMIT's own comment (constants.ts): a
+  // real design's thumbnail can still land over EmailJS's 50KB hard cap
+  // even after JPEG compression, and that would otherwise make the whole
+  // notification 413 and vanish silently (the paired Sheets submission
+  // still succeeds, so nothing else surfaces the failure). Drop just the
+  // image rather than lose the entire email.
+  if (JSON.stringify(params).length > EMAILJS_NOTIFY_PAYLOAD_SAFE_LIMIT) {
+    params.thumbnail = "(omitted: too large to email, see the full thumbnail in the Google Sheets row instead)";
+  }
+  await sendEmail(gallerySubmissionConfig.emailjsNotifyTemplateId, params);
 }
