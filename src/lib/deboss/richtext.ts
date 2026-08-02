@@ -37,7 +37,7 @@ export function unescapeText(text: string): string {
 
 /** True if `text` contains any of this codebase's recognized rich-text tags. */
 export function hasRichRuns(text: string): boolean {
-  return /<\/?(b|i|u|span)(?:[\s>])/.test(text);
+  return /<\/?(b|i|u|s|uc|span)(?:[\s>])/.test(text);
 }
 
 /**
@@ -50,7 +50,7 @@ export function stripTags(text: string): string {
   return unescapeText(text.replace(/<[^>]+>/g, ""));
 }
 
-type OpenTag = { kind: "b" | "i" | "u" } | { kind: "span"; size: number };
+type OpenTag = { kind: "b" | "i" | "u" | "s" | "uc" } | { kind: "span"; size: number };
 
 /** Parse one "\n"-delimited line into styled runs. `baseSize` fills in for text with no explicit size override. */
 export function parseRuns(line: string, baseSize: number): TextRun[] {
@@ -63,14 +63,18 @@ export function parseRuns(line: string, baseSize: number): TextRun[] {
     let bold = false;
     let italic = false;
     let underline = false;
+    let strikethrough = false;
+    let uppercase = false;
     let size = baseSize;
     for (const tag of stack) {
       if (tag.kind === "span") size = tag.size;
       else if (tag.kind === "b") bold = true;
       else if (tag.kind === "i") italic = true;
-      else underline = true;
+      else if (tag.kind === "u") underline = true;
+      else if (tag.kind === "s") strikethrough = true;
+      else uppercase = true; // kind === "uc"
     }
-    runs.push({ text: unescapeText(buffer), bold, italic, underline, size });
+    runs.push({ text: unescapeText(buffer), bold, italic, underline, strikethrough, uppercase, size });
     buffer = "";
   };
 
@@ -91,15 +95,15 @@ export function parseRuns(line: string, baseSize: number): TextRun[] {
     }
     const tag = line.slice(i + 1, closeIdx);
     const sizeMatch = /^span style="font-size:(\d+)px"$/.exec(tag);
-    if (tag === "b" || tag === "i" || tag === "u") {
+    if (tag === "b" || tag === "i" || tag === "u" || tag === "s" || tag === "uc") {
       flush();
       stack.push({ kind: tag });
     } else if (sizeMatch) {
       flush();
       stack.push({ kind: "span", size: Number.parseInt(sizeMatch[1] ?? "0", 10) });
-    } else if (tag === "/b" || tag === "/i" || tag === "/u" || tag === "/span") {
+    } else if (tag === "/b" || tag === "/i" || tag === "/u" || tag === "/s" || tag === "/uc" || tag === "/span") {
       flush();
-      const want = tag.slice(1) as "b" | "i" | "u" | "span";
+      const want = tag.slice(1) as "b" | "i" | "u" | "s" | "uc" | "span";
       for (let k = stack.length - 1; k >= 0; k--) {
         if (stack[k]?.kind === want) {
           stack.splice(k, 1);
@@ -119,6 +123,8 @@ export function parseRuns(line: string, baseSize: number): TextRun[] {
 function wrapRun(text: string, run: Omit<TextRun, "text">, baseSize: number): string {
   let out = escapeText(text);
   if (run.underline) out = `<u>${out}</u>`;
+  if (run.strikethrough) out = `<s>${out}</s>`;
+  if (run.uppercase) out = `<uc>${out}</uc>`;
   if (run.italic) out = `<i>${out}</i>`;
   if (run.bold) out = `<b>${out}</b>`;
   if (run.size !== baseSize) out = `<span style="font-size:${Math.round(run.size)}px">${out}</span>`;
@@ -160,9 +166,11 @@ export function serializeDoc(doc: RichDoc, baseSize: number): string {
         const bold = marks.some((m) => m.type === "bold");
         const italic = marks.some((m) => m.type === "italic");
         const underline = marks.some((m) => m.type === "underline");
+        const strikethrough = marks.some((m) => m.type === "strike");
+        const uppercase = marks.some((m) => m.type === "uppercase");
         const sizeMark = marks.find((m) => m.type === "fontSize");
         const size = sizeMark?.attrs?.size ?? baseSize;
-        current += wrapRun(node.text, { bold, italic, underline, size }, baseSize);
+        current += wrapRun(node.text, { bold, italic, underline, strikethrough, uppercase, size }, baseSize);
       }
     }
     outputLines.push(current);
@@ -182,6 +190,8 @@ export function deserializeToDoc(text: string, baseSize: number): RichDoc {
       if (run.bold) marks.push({ type: "bold" });
       if (run.italic) marks.push({ type: "italic" });
       if (run.underline) marks.push({ type: "underline" });
+      if (run.strikethrough) marks.push({ type: "strike" });
+      if (run.uppercase) marks.push({ type: "uppercase" });
       if (run.size !== baseSize) marks.push({ type: "fontSize", attrs: { size: run.size } });
       paraContent.push({ type: "text", text: run.text, marks: marks.length ? marks : undefined });
     }

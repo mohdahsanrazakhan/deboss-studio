@@ -190,6 +190,9 @@ export interface TextRun {
   bold: boolean;
   italic: boolean;
   underline: boolean;
+  strikethrough: boolean;
+  /** Display-only, non-destructive (like bold/italic): the stored text keeps its original case, only the drawn/measured glyphs are uppercased. */
+  uppercase: boolean;
   size: number;
 }
 

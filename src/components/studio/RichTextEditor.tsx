@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { AlignCenter, AlignLeft, AlignRight, AlignVerticalSpaceAround, Bold, Italic, Minus, Plus, Underline as UnderlineIcon } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, AlignVerticalSpaceAround, Bold, CaseUpper, Italic, Minus, Plus, Strikethrough, Underline as UnderlineIcon } from "lucide-react";
 import type { FontFamily, TextAlign } from "@/types/deboss";
 import { CURSIVE_SCRIPT_FONTS, FONT_CAPABILITIES, TYPE_SLIDER_DEFS } from "@/lib/deboss/constants";
 import { detectTextDirection } from "@/lib/deboss/direction";
@@ -17,6 +17,7 @@ import {
   type RichDoc,
 } from "@/lib/deboss/richtext";
 import { FontSize } from "./FontSizeMark";
+import { Uppercase } from "./UppercaseMark";
 
 const SIZE_STEP = 1;
 const MIN_SIZE = 8;
@@ -254,9 +255,9 @@ export function RichTextEditor({
         listItem: false,
         listKeymap: false,
         orderedList: false,
-        strike: false,
       }),
       FontSize,
+      Uppercase,
     ],
     content: deserializeToDoc(value, baseSize) as JSONContent,
     immediatelyRender: false,
@@ -473,6 +474,38 @@ export function RichTextEditor({
       >
         <UnderlineIcon size={15} aria-hidden="true" />
         <span className="rich-text-btn-label">Underline</span>
+      </button>
+      <button
+        type="button"
+        className={`rich-text-btn${editor?.isActive("strike") ? " is-active" : ""}`}
+        disabled={!editor}
+        aria-pressed={editor?.isActive("strike") ?? false}
+        aria-label="Strikethrough"
+        data-tooltip="Strikethrough"
+        onMouseDown={preserveSelection}
+        onClick={() => runFormatting(() => editor && beginChain(editor).toggleStrike().run())}
+      >
+        <Strikethrough size={15} aria-hidden="true" />
+        <span className="rich-text-btn-label">Strikethrough</span>
+      </button>
+      {/*
+        Uppercase is display-only/non-destructive, exactly like Bold/
+        Italic/Underline above: the stored text keeps its original typed
+        case (UppercaseMark.ts, richtext.ts's <uc> tag), only the drawn/
+        measured glyphs are uppercased. Not a one-time text mutation.
+      */}
+      <button
+        type="button"
+        className={`rich-text-btn${editor?.isActive("uppercase") ? " is-active" : ""}`}
+        disabled={!editor}
+        aria-pressed={editor?.isActive("uppercase") ?? false}
+        aria-label="Uppercase"
+        data-tooltip="Uppercase"
+        onMouseDown={preserveSelection}
+        onClick={() => runFormatting(() => editor && beginChain(editor).toggleUppercase().run())}
+      >
+        <CaseUpper size={15} aria-hidden="true" />
+        <span className="rich-text-btn-label">Uppercase</span>
       </button>
       {/*
         Alignment/letter-spacing/line-height are TextBlock-level fields

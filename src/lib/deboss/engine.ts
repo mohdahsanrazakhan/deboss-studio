@@ -196,6 +196,8 @@ function tokenizeParagraph(runs: TextRun[]): Fragment[] {
         bold: run.bold,
         italic: run.italic,
         underline: run.underline,
+        strikethrough: run.strikethrough,
+        uppercase: run.uppercase,
         size: run.size,
         spaceBefore: !isFirst && pendingSpace,
       });
@@ -250,6 +252,12 @@ function measureRichLines(
       span.style.fontWeight = frag.bold ? "700" : "400";
       span.style.fontStyle = frag.italic ? "italic" : "normal";
       span.style.fontSize = `${frag.size}px`;
+      // Uppercase glyphs are wider than lowercase, so this must be applied
+      // BEFORE measuring (below), or buildBlockMask's own .toUpperCase()
+      // draw would disagree with the width/wrap positions measured here.
+      // Strikethrough needs no such measurement-side change: a drawn line
+      // doesn't affect glyph width.
+      span.style.textTransform = frag.uppercase ? "uppercase" : "";
       span.textContent = frag.text;
       container.appendChild(span);
       entries.push({ span, fragment: frag, paraIndex: idx });
@@ -319,6 +327,8 @@ function measureRichLines(
         bold: fragment.bold,
         italic: fragment.italic,
         underline: fragment.underline,
+        strikethrough: fragment.strikethrough,
+        uppercase: fragment.uppercase,
         size: fragment.size,
         x: rect.left - containerRect.left + PAD_X,
         width: rect.width,
@@ -655,7 +665,10 @@ function buildBlockMask(
         x.font = `${style}${weight} ${frag.size * s}px "${block.font}"`;
         const fx = (frag.x + dx) * s;
         const fy = (frag.y + dy) * s;
-        x.fillText(frag.text, fx, fy);
+        // Display-only: the stored text keeps its original case (see
+        // TextRun.uppercase); only the drawn (and, in measureRichLines,
+        // measured) glyphs are uppercased.
+        x.fillText(frag.uppercase ? frag.text.toUpperCase() : frag.text, fx, fy);
         if (frag.underline) {
           // Drawn into this same mask so it inherits the shared recess/
           // tint/shadow/highlight compositing exactly like the glyphs.
@@ -664,6 +677,13 @@ function buildBlockMask(
           const thickness = Math.max(frag.size * s * 0.06, 1);
           const underlineY = fy + frag.size * s * 0.38;
           x.fillRect(fx, underlineY, frag.width * s, thickness);
+        }
+        if (frag.strikethrough) {
+          // Same drawn-line approach as underline, just positioned near
+          // the vertical middle instead of below the baseline.
+          const thickness = Math.max(frag.size * s * 0.06, 1);
+          const strikeY = fy - frag.size * s * 0.05;
+          x.fillRect(fx, strikeY, frag.width * s, thickness);
         }
       }
     }
