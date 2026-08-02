@@ -24,11 +24,22 @@ export const OTP_SESSION_SEND_COUNT_KEY = "textDebossStudio.gallerySubmission.ot
 export const SUBMISSION_PREVIEW_LOGICAL_W = 320;
 
 /**
- * The PNG actually sent with a submission is rendered much smaller than a
+ * The image actually sent with a submission is rendered much smaller than a
  * real export (EXPORT_SCALE = 3 in lib/deboss/constants.ts): both Google
  * Sheets (~50,000-char cell cap) and EmailJS's own template-variable size
  * limits need a small base64 payload, and this is only a reference
  * thumbnail for the owner, not a print-quality export.
+ *
+ * Encoded as JPEG (see THUMBNAIL_JPEG_QUALITY below), not PNG: the paper
+ * grain/texture layer is high-entropy noise that PNG's lossless compression
+ * barely shrinks, so even at this small size a PNG thumbnail could exceed
+ * EmailJS's own hard 50KB template-variable cap (confirmed in practice: a
+ * real submission 413'd with "Variables size limit... maximum allowed
+ * variables size is 50Kb" while the same payload's Sheets row went through
+ * fine, since Apps Script has no equivalent per-variable cap). JPEG's
+ * lossy compression handles that same noise far better.
  */
 export const THUMBNAIL_LOGICAL_W = 240;
 export const THUMBNAIL_SCALE = 1;
+/** 0-1; tuned to keep a THUMBNAIL_LOGICAL_W-wide debossed thumbnail comfortably under EmailJS's 50KB template-variable cap. */
+export const THUMBNAIL_JPEG_QUALITY = 0.6;

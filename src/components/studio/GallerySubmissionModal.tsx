@@ -16,6 +16,7 @@ import {
   OTP_RESEND_COOLDOWN_MS,
   OTP_SESSION_SEND_COUNT_KEY,
   SUBMISSION_PREVIEW_LOGICAL_W,
+  THUMBNAIL_JPEG_QUALITY,
   THUMBNAIL_LOGICAL_W,
   THUMBNAIL_SCALE,
 } from "@/lib/gallery-submission/constants";
@@ -249,7 +250,10 @@ export function GallerySubmissionModal({
     setOtpError(null);
     try {
       const canvas = buildExportCanvas(previewState, THUMBNAIL_LOGICAL_W, THUMBNAIL_SCALE);
-      const thumbnailDataUrl = canvas.toDataURL("image/png");
+      // JPEG, not PNG: see THUMBNAIL_JPEG_QUALITY's own comment (constants.ts)
+      // for why a lossless PNG of the grainy paper texture can blow past
+      // EmailJS's 50KB template-variable cap even at this small size.
+      const thumbnailDataUrl = canvas.toDataURL("image/jpeg", THUMBNAIL_JPEG_QUALITY);
       const payload = {
         displayName: displayName.trim(),
         email: email.trim(),
