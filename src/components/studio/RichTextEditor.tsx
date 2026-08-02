@@ -162,6 +162,23 @@ export function RichTextEditor({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [spacingPanelOpen]);
 
+  // On mobile the panel goes full-width below the docked bar (see
+  // globals.css's `.rich-text-spacing-panel` mobile override), which
+  // needs the bar's actual live height (safe-area insets/button sizing
+  // vary) rather than a hardcoded CSS offset, so it's measured here and
+  // passed down as a CSS custom property.
+  const [spacingPanelTop, setSpacingPanelTop] = useState(0);
+  useLayoutEffect(() => {
+    if (!isMobileDocked || !spacingPanelOpen) return;
+    const update = () => {
+      const rect = toolbarRef.current?.getBoundingClientRect();
+      if (rect) setSpacingPanelTop(rect.bottom);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [isMobileDocked, spacingPanelOpen]);
+
   // Portaled to <body> (see the toolbar's render below) so it's never
   // clipped by `.stage-inner`'s `overflow: hidden` (its positioning
   // ancestor otherwise) and always paints above the sidebar/mobile sheet,
@@ -424,11 +441,12 @@ export function RichTextEditor({
         disabled={!editor || !capabilities.bold}
         aria-pressed={editor?.isActive("bold") ?? false}
         aria-label="Bold"
-        title={capabilities.bold ? "Bold" : `Bold isn't available for ${font} (no bold face loaded)`}
+        data-tooltip={capabilities.bold ? "Bold" : `Bold isn't available for ${font} (no bold face loaded)`}
         onMouseDown={preserveSelection}
         onClick={() => runFormatting(() => editor && beginChain(editor).toggleBold().run())}
       >
         <Bold size={15} aria-hidden="true" />
+        <span className="rich-text-btn-label">Bold</span>
       </button>
       <button
         type="button"
@@ -436,11 +454,12 @@ export function RichTextEditor({
         disabled={!editor || !capabilities.italic}
         aria-pressed={editor?.isActive("italic") ?? false}
         aria-label="Italic"
-        title={capabilities.italic ? "Italic" : `Italic isn't available for ${font} (no italic face loaded)`}
+        data-tooltip={capabilities.italic ? "Italic" : `Italic isn't available for ${font} (no italic face loaded)`}
         onMouseDown={preserveSelection}
         onClick={() => runFormatting(() => editor && beginChain(editor).toggleItalic().run())}
       >
         <Italic size={15} aria-hidden="true" />
+        <span className="rich-text-btn-label">Italic</span>
       </button>
       <button
         type="button"
@@ -448,11 +467,12 @@ export function RichTextEditor({
         disabled={!editor}
         aria-pressed={editor?.isActive("underline") ?? false}
         aria-label="Underline"
-        title="Underline"
+        data-tooltip="Underline"
         onMouseDown={preserveSelection}
         onClick={() => runFormatting(() => editor && beginChain(editor).toggleUnderline().run())}
       >
         <UnderlineIcon size={15} aria-hidden="true" />
+        <span className="rich-text-btn-label">Underline</span>
       </button>
       {/*
         Alignment/letter-spacing/line-height are TextBlock-level fields
@@ -469,11 +489,12 @@ export function RichTextEditor({
         disabled={!editor}
         aria-pressed={align === "left"}
         aria-label="Align left"
-        title="Align left"
+        data-tooltip="Align left"
         onMouseDown={preserveSelection}
         onClick={() => onAlignChange("left")}
       >
         <AlignLeft size={15} aria-hidden="true" />
+        <span className="rich-text-btn-label">Left</span>
       </button>
       <button
         type="button"
@@ -481,11 +502,12 @@ export function RichTextEditor({
         disabled={!editor}
         aria-pressed={align === "center"}
         aria-label="Align center"
-        title="Align center"
+        data-tooltip="Align center"
         onMouseDown={preserveSelection}
         onClick={() => onAlignChange("center")}
       >
         <AlignCenter size={15} aria-hidden="true" />
+        <span className="rich-text-btn-label">Center</span>
       </button>
       <button
         type="button"
@@ -493,11 +515,12 @@ export function RichTextEditor({
         disabled={!editor}
         aria-pressed={align === "right"}
         aria-label="Align right"
-        title="Align right"
+        data-tooltip="Align right"
         onMouseDown={preserveSelection}
         onClick={() => onAlignChange("right")}
       >
         <AlignRight size={15} aria-hidden="true" />
+        <span className="rich-text-btn-label">Right</span>
       </button>
       <span className="rich-text-toolbar-divider" aria-hidden="true" />
       {/*
@@ -519,7 +542,7 @@ export function RichTextEditor({
           className="rich-text-size-btn"
           disabled={!editor || currentSize <= MIN_SIZE}
           aria-label="Decrease font size"
-          title="Decrease font size"
+          data-tooltip="Decrease font size"
           onMouseDown={preserveSelection}
           onClick={() => bumpSize(-SIZE_STEP)}
         >
@@ -534,6 +557,7 @@ export function RichTextEditor({
           className="rich-text-size-input"
           disabled={!editor}
           aria-label="Font size in pixels"
+          data-tooltip="Font size"
           value={sizeDraft}
           onChange={(e) => setSizeDraft(e.target.value.replace(/[^0-9]/g, ""))}
           onKeyDown={(e) => {
@@ -552,7 +576,7 @@ export function RichTextEditor({
           className="rich-text-size-btn"
           disabled={!editor || currentSize >= MAX_SIZE}
           aria-label="Increase font size"
-          title="Increase font size"
+          data-tooltip="Increase font size"
           onMouseDown={preserveSelection}
           onClick={() => bumpSize(SIZE_STEP)}
         >
@@ -571,14 +595,20 @@ export function RichTextEditor({
             aria-pressed={spacingPanelOpen}
             aria-expanded={spacingPanelOpen}
             aria-label="Letter and line spacing"
-            title="Letter and line spacing"
+            data-tooltip="Letter and line spacing"
             onMouseDown={preserveSelection}
             onClick={() => setSpacingPanelOpen((v) => !v)}
           >
             <AlignVerticalSpaceAround size={15} aria-hidden="true" />
+            <span className="rich-text-btn-label">Spacing</span>
           </button>
           {spacingPanelOpen && (
-            <div className="rich-text-spacing-panel" role="dialog" aria-label="Letter and line spacing">
+            <div
+              className="rich-text-spacing-panel"
+              style={isMobileDocked ? ({ "--spacing-panel-top": `${spacingPanelTop}px` } as React.CSSProperties) : undefined}
+              role="dialog"
+              aria-label="Letter and line spacing"
+            >
               {letterSpacingDef && (
                 <div className="slider">
                   <div className="slider-head">

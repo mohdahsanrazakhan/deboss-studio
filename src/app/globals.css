@@ -394,6 +394,30 @@ body {
   height: 20px;
   margin: 0 4px;
   background: var(--line);
+  flex-shrink: 0;
+}
+
+/* Canva-style tooltip: replaces the native `title` attribute's slow,
+   OS-styled tooltip with a small dark bubble below the control, matching
+   Canva's own toolbar. CSS-only (content: attr(data-tooltip)), no JS or
+   component needed; `aria-label` (already on every control) covers
+   accessibility on its own, so `title` was dropped in favor of this. */
+[data-tooltip] { position: relative; }
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute; top: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--ink); color: var(--panel);
+  font-size: .72rem; font-weight: 500; white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity .12s ease .35s, transform .12s ease .35s;
+  z-index: 20;
+}
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  opacity: 1; transform: translateX(-50%) translateY(0);
 }
 .rich-text-btn {
   display: inline-flex;
@@ -402,6 +426,7 @@ body {
   min-width: 28px;
   height: 28px;
   padding: 0 7px;
+  flex-shrink: 0;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
@@ -436,9 +461,9 @@ body {
   display: inline-flex;
   align-items: stretch;
   height: 28px;
+  flex-shrink: 0;
   border: 1px solid var(--line);
   border-radius: 999px;
-  overflow: hidden;
   background: #fff;
 }
 .rich-text-size-btn {
@@ -454,6 +479,14 @@ body {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+/* Replaces the stepper's old overflow:hidden (which clipped its -/[value]/+
+   children's own rounded corners AND, as a side effect, silently clipped
+   their [data-tooltip] bubbles too, reported as "tooltip not showing on
+   the size stepper"): rounding the first/last child directly achieves the
+   same pill shape without an ancestor that clips anything positioned
+   outside its box. */
+.rich-text-size-btn:first-child { border-radius: 999px 0 0 999px; }
+.rich-text-size-btn:last-child { border-radius: 0 999px 999px 0; }
 .rich-text-size-btn:hover:not(:disabled) {
   background: rgba(124,111,90,.1);
   color: var(--ink);
@@ -487,7 +520,7 @@ body {
    of the (already body-portaled, unclipped) toolbar, so no extra portal
    is needed; reuses the sidebar's own .slider/.slider-head/
    input[type="range"] styling (globals.css) for visual consistency. */
-.rich-text-spacing-wrap { position: relative; display: inline-flex; }
+.rich-text-spacing-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
 .rich-text-spacing-panel {
   position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
   width: 220px;
@@ -516,6 +549,12 @@ body {
   .rich-text-size-btn { width: 44px; }
   .rich-text-size-input { width: 46px; font-size: .95rem; }
 }
+
+/* Small text label under a toolbar button's icon, Canva-style: hidden by
+   default (desktop stays icon-only/compact) and shown only inside the
+   docked mobile toolbar below, where there's a full-width row to spare
+   and pure icons alone were reported as unclear. */
+.rich-text-btn-label { display: none; }
 
 /* Presets */
 .preset-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1472,15 +1511,66 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
      constantly hit the flip-below case. Same z-index (46) as the floating
      variant; ControlPanel.tsx's mobile-menu deselects the block before
      opening a sheet, so this never has to compete with .mini-preview or
-     .section-modal-panel for the same space. */
+     .section-modal-panel for the same space.
+
+     Single scrollable row (Canva-style) rather than wrapping to multiple
+     lines: every control stays reachable via horizontal swipe instead of
+     the bar growing taller and eating into canvas space. Children keep
+     their own flex-shrink:0 (set alongside each control's own rule) so
+     scrolling, not squishing, is what happens once content overflows. */
   .rich-text-toolbar.is-docked {
     position: fixed;
     top: env(safe-area-inset-top, 0px);
     left: 0;
     right: 0;
     width: 100%;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-radius: 0;
+    border-width: 0 0 1px;
+  }
+  .rich-text-toolbar.is-docked::-webkit-scrollbar { display: none; }
+
+  /* Icon + small label stacked, Canva-style: the docked row has a full
+     width to spare and pure icons alone were reported as unclear. Only
+     applied to the "always-icon-only" buttons (Bold/Italic/Underline/
+     Align/Spacing); the font-size stepper already shows its own live
+     number inline, so it's left as-is rather than also becoming a tile. */
+  .rich-text-toolbar.is-docked .rich-text-btn {
+    flex-direction: column;
     justify-content: center;
-    flex-wrap: wrap;
+    gap: 2px;
+    width: auto;
+    height: auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 6px 10px;
+  }
+  .rich-text-toolbar.is-docked .rich-text-btn-label {
+    display: block;
+    font-size: .62rem;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  /* The letter-spacing/line-height popover spans the full screen width
+     below the docked bar instead of a small floating card (which would
+     otherwise be anchored to wherever its toggle button happens to have
+     scrolled to in the row above), matching the docked toolbar's own
+     full-width treatment. `spacingPanelTop` (RichTextEditor.tsx) measures
+     the docked toolbar's actual live height so this sits flush beneath
+     it regardless of safe-area insets or viewport-specific button sizing. */
+  .rich-text-spacing-panel {
+    position: fixed;
+    top: var(--spacing-panel-top, 100%);
+    left: 0;
+    right: 0;
+    width: 100%;
+    transform: none;
     border-radius: 0;
     border-width: 0 0 1px;
   }
