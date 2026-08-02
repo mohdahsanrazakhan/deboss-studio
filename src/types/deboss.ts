@@ -111,6 +111,9 @@ export interface Preset {
   highlight: number;
   blur: number;
   texture: number;
+  tintStrength: number;
+  tint: PaperColor;
+  shadowColor: PaperColor;
   /** "r,g,b": matches the swatch key format so the UI can sync. */
   paper: string;
 }

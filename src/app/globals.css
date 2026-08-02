@@ -189,7 +189,7 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 6px 18px 18px;
+  padding: 9px 18px;
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 16px;

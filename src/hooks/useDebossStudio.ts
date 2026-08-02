@@ -322,6 +322,9 @@ export function useDebossStudio(
       highlight: p.highlight,
       blur: p.blur,
       texture: p.texture,
+      tintStrength: p.tintStrength,
+      tint: p.tint,
+      shadowColor: p.shadowColor,
       paper: parsePaperKey(p.paper),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -558,6 +561,9 @@ export function useDebossStudio(
       highlight: p.highlight,
       blur: p.blur,
       texture: p.texture,
+      tintStrength: p.tintStrength,
+      tint: p.tint,
+      shadowColor: p.shadowColor,
       paper: parsePaperKey(p.paper),
     }));
     setPresetInUrl(id);
