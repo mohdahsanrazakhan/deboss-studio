@@ -2,7 +2,7 @@
 
 Press any text into premium textured paper. A canvas-based debossed / letterpress text generator built with Next.js 15, React 19, and TypeScript, working beautifully with Urdu, Arabic, Hindi, English, and more. Text direction (RTL/LTR) is detected automatically as you type.
 
-Type your text, tune the engraving (depth, shadow, highlight, edge blur, paper grain, font size), pick a font, alignment, and paper tone, or apply a one-click preset, then export a high-resolution PNG or copy it straight to the clipboard. The exported PNG is pixel-identical to the live preview because both go through the same render path. The default sample text is Urdu (`بسمِ اللہ`), reflecting the app's origin.
+Type your text, tune the engraving (depth, shadow, highlight, edge blur, paper grain, font size), pick a font, alignment, and paper tone, or apply a one-click preset, then export a high-resolution PNG or copy it straight to the clipboard. The exported PNG is pixel-identical to the live preview because both go through the same render path. The default sample text is Urdu (`یہاں لکھیں`), reflecting the app's origin.
 
 It's also a fully installable, offline-capable PWA: add it to your home screen on mobile or desktop, and it keeps working with no connection once you've visited it online at least once (there's no backend or data fetching to lose anyway).
 

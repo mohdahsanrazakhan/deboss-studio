@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 import { createPortal } from "react-dom";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { Bold, Italic, Minus, Plus, Underline as UnderlineIcon } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, Minus, Plus, Underline as UnderlineIcon } from "lucide-react";
 import type { FontFamily, TextAlign } from "@/types/deboss";
-import { CURSIVE_SCRIPT_FONTS, FONT_CAPABILITIES } from "@/lib/deboss/constants";
+import { CURSIVE_SCRIPT_FONTS, FONT_CAPABILITIES, TYPE_SLIDER_DEFS } from "@/lib/deboss/constants";
 import { detectTextDirection } from "@/lib/deboss/direction";
 import {
   deserializeToDoc,
@@ -20,17 +21,14 @@ import { FontSize } from "./FontSizeMark";
 const SIZE_STEP = 1;
 const MIN_SIZE = 8;
 const MAX_SIZE = 400;
-// Gap kept between the floating toolbar and the block it's anchored to,
-// and between the toolbar and the viewport edge when clamping/flipping
+// Gap kept between the docked toolbar and the canvas it's anchored to,
+// and between the toolbar and the viewport edge when clamping
 // (see recomputeToolbarPosition below).
 const TOOLBAR_MARGIN = 8;
 // Matches globals.css's own primary mobile breakpoint (sidebar -> bottom
-// sheets); the toolbar docks at the top of the screen at the same point,
-// instead of floating near the block.
+// sheets); the toolbar docks full-width at the very top of the screen at
+// the same point, instead of the desktop's canvas-anchored pill.
 const MOBILE_DOCK_QUERY = "(max-width: 880px)";
-
-/** A block's own screen-space box (CanvasTextOverlay.tsx's `Box`, duplicated here rather than imported: that file dynamic-imports this one, and a type-only cross-import back the other way is unnecessary coupling for four numbers). */
-type Rect = { left: number; top: number; width: number; height: number };
 
 type RichTextEditorProps = {
   value: string;
@@ -44,10 +42,14 @@ type RichTextEditorProps = {
   align: TextAlign;
   letterSpacing: number;
   lineHeightFactor: number;
+  /** Write side of align/letterSpacing/lineHeightFactor above: the toolbar's alignment buttons and letter-spacing/line-height steppers call these, which route through updateTextBlock (CanvasTextOverlay.tsx) rather than any Tiptap mark, since these are TextBlock-level fields, not per-character styling. */
+  onAlignChange: (align: TextAlign) => void;
+  onLetterSpacingChange: (value: number) => void;
+  onLineHeightChange: (value: number) => void;
   /** False = selected-only (formatting targets the whole block, see the mount effect below); true = actively typing (today's exact per-character behavior, unchanged). */
   isEditing: boolean;
-  /** The block's own content box (CanvasTextOverlay.tsx's computeContentBox), used to anchor the floating toolbar now that it doesn't rely on a character selection existing at all. */
-  anchorBox: Rect;
+  /** Anchors the always-docked desktop toolbar just above the canvas (Canva-style persistent bar), independent of which block is selected or where it sits; see recomputeToolbarPosition below. */
+  canvasRef: RefObject<HTMLCanvasElement | null>;
 };
 
 /** Expands a partial-word selection out to the nearest whitespace on both sides, so a style boundary never lands mid-word. Safe no-op for a collapsed selection or one spanning multiple paragraphs. */
@@ -81,6 +83,94 @@ function getCurrentSize(editor: Editor | null, baseSize: number): number {
   return typeof attrs.size === "number" ? attrs.size : baseSize;
 }
 
+type ToolbarStepperProps = {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  /** Decimal places shown/rounded to (0 for a whole-number field). */
+  decimals: number;
+  ariaLabel: string;
+  disabled: boolean;
+  onChange: (value: number) => void;
+};
+
+/**
+ * Generic pill stepper (-/[editable input]/+), same visual/interaction
+ * pattern as the font-size stepper below (draft-state input that only
+ * re-syncs from `value` while unfocused, commits on blur/Enter, clamped).
+ * Used ONLY by the new letter-spacing/line-height controls: the existing
+ * font-size stepper stays a separate, untouched implementation since it's
+ * tightly coupled to Tiptap's mark/selection commands, a different commit
+ * path than these two, which call a plain onChange straight through to
+ * updateTextBlock (CanvasTextOverlay.tsx).
+ */
+function ToolbarStepper({ value, min, max, step, decimals, ariaLabel, disabled, onChange }: ToolbarStepperProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState(value.toFixed(decimals));
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) setDraft(value.toFixed(decimals));
+  }, [value, decimals]);
+
+  const commit = (raw: number) => {
+    const rounded = Number(raw.toFixed(decimals));
+    const next = Math.min(max, Math.max(min, rounded));
+    onChange(next);
+    setDraft(next.toFixed(decimals));
+  };
+  const bump = (delta: number) => commit(value + delta);
+  const commitDraft = () => {
+    const parsed = Number.parseFloat(draft);
+    if (Number.isFinite(parsed)) commit(parsed);
+    else setDraft(value.toFixed(decimals)); // empty/invalid: revert, don't apply
+  };
+
+  return (
+    <div className="rich-text-size-stepper">
+      <button
+        type="button"
+        className="rich-text-size-btn"
+        disabled={disabled || value <= min}
+        aria-label={`Decrease ${ariaLabel}`}
+        title={`Decrease ${ariaLabel}`}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => bump(-step)}
+      >
+        <Minus size={13} aria-hidden="true" />
+      </button>
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="decimal"
+        className="rich-text-size-input"
+        disabled={disabled}
+        aria-label={ariaLabel}
+        title={ariaLabel}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.replace(/[^0-9.-]/g, ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commitDraft();
+          }
+        }}
+        onBlur={commitDraft}
+      />
+      <button
+        type="button"
+        className="rich-text-size-btn"
+        disabled={disabled || value >= max}
+        aria-label={`Increase ${ariaLabel}`}
+        title={`Increase ${ariaLabel}`}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => bump(step)}
+      >
+        <Plus size={13} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
 /**
  * Full WYSIWYG rich-text editor for the studio's text input (replaces the
  * plain <textarea>): select text, toggle Bold/Italic/Underline, or set its
@@ -103,8 +193,11 @@ export function RichTextEditor({
   align,
   letterSpacing,
   lineHeightFactor,
+  onAlignChange,
+  onLetterSpacingChange,
+  onLineHeightChange,
   isEditing,
-  anchorBox,
+  canvasRef,
 }: RichTextEditorProps) {
   // Refs so onUpdate always reads the latest props without re-creating the
   // editor or its handlers (same pattern as stateRef in useDebossStudio.ts).
@@ -142,50 +235,47 @@ export function RichTextEditor({
   // clipped by `.stage-inner`'s `overflow: hidden` (its positioning
   // ancestor otherwise) and always paints above the sidebar/mobile sheet,
   // which are plain unpositioned/lower-z-index siblings. Position itself
-  // is computed here rather than in CSS, since "just above the block,
-  // flipping below / clamping sideways near a viewport edge" needs real
-  // measured boxes, not something CSS alone can express once the element is
-  // no longer a DOM descendant of what it's anchored to. Anchored to the
-  // block's own box (not a character selection, which may not exist at
-  // all in the selected-only sub-state), passed down from
-  // CanvasTextOverlay.tsx's already-computed `contentBox`.
+  // is computed here rather than in CSS, since clamping sideways near a
+  // viewport edge needs a real measured box, not something CSS alone can
+  // express once the element is no longer a DOM descendant of what it's
+  // anchored to.
+  //
+  // Always docked just above the canvas's own top edge (Canva-style
+  // persistent bar), independent of which block is selected or where it
+  // sits: this used to anchor to the SELECTED BLOCK's own box instead,
+  // which could land the toolbar overlapping the site's own (non-sticky)
+  // navbar whenever a block was near the top of the canvas. Anchoring to
+  // the canvas itself means the toolbar never moves when you select a
+  // different block, and can't collide with the navbar since it isn't
+  // tied to block position at all.
   const recomputeToolbarPosition = useCallback(() => {
     const toolbar = toolbarRef.current;
-    if (!toolbar) return;
+    const canvas = canvasRef.current;
+    if (!toolbar || !canvas) return;
     const toolbarRect = toolbar.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
     const vw = window.innerWidth;
-    const vh = window.innerHeight;
 
-    // Vertical: prefer sitting just above the block so it doesn't cover
-    // the text. Flip to just below when there isn't room above; if
-    // neither fits, clamp fully into view rather than letting either edge clip.
-    let top = anchorBox.top - toolbarRect.height - TOOLBAR_MARGIN;
-    if (top < TOOLBAR_MARGIN) {
-      const below = anchorBox.top + anchorBox.height + TOOLBAR_MARGIN;
-      if (below + toolbarRect.height + TOOLBAR_MARGIN <= vh) {
-        top = below;
-      } else {
-        top = Math.min(
-          Math.max(top, TOOLBAR_MARGIN),
-          Math.max(vh - toolbarRect.height - TOOLBAR_MARGIN, TOOLBAR_MARGIN),
-        );
-      }
-    }
+    // Sits just above the canvas; if there's no room (canvas scrolled
+    // near the very top of the viewport), pins near the viewport's own
+    // top edge instead, same simple fallback Canva's own persistent bar
+    // uses rather than trying to avoid covering anything specific.
+    const top = Math.max(canvasRect.top - toolbarRect.height - TOOLBAR_MARGIN, TOOLBAR_MARGIN);
 
-    // Horizontal: centered over the block, clamped fully into the
-    // viewport so it can't run off either side near the canvas's edges.
-    let left = anchorBox.left + anchorBox.width / 2 - toolbarRect.width / 2;
+    // Horizontal: centered over the canvas, clamped fully into the
+    // viewport so it can't run off either side.
+    let left = canvasRect.left + canvasRect.width / 2 - toolbarRect.width / 2;
     left = Math.min(left, vw - toolbarRect.width - TOOLBAR_MARGIN);
     left = Math.max(left, TOOLBAR_MARGIN);
 
     setToolbarPos({ top, left });
-  }, [anchorBox]);
+  }, [canvasRef]);
 
   // Measure/position synchronously before paint (no visible flash), then
-  // keep tracking: the resize/scroll listeners re-clamp against the
-  // viewport even when the block's own box hasn't moved. Skipped entirely
-  // while docked, since that's pure CSS positioning with no JS-computed
-  // top/left to keep in sync.
+  // keep tracking: the resize/scroll listeners re-anchor against the
+  // canvas's own live position as the page scrolls or resizes. Skipped
+  // entirely while docked, since that's pure CSS positioning with no
+  // JS-computed top/left to keep in sync.
   useLayoutEffect(() => {
     if (isMobileDocked) return;
     recomputeToolbarPosition();
@@ -384,6 +474,11 @@ export function RichTextEditor({
     e.preventDefault();
   };
 
+  // Reused rather than hardcoded: the same bounds the old sidebar sliders
+  // used before they were relocated here (see CLAUDE.md).
+  const letterSpacingDef = TYPE_SLIDER_DEFS.find((d) => d.id === "letterSpacing");
+  const lineHeightDef = TYPE_SLIDER_DEFS.find((d) => d.id === "lineHeightFactor");
+
   const toolbar = (
     <div
       ref={toolbarRef}
@@ -427,6 +522,51 @@ export function RichTextEditor({
         onClick={() => runFormatting(() => editor && beginChain(editor).toggleUnderline().run())}
       >
         <UnderlineIcon size={15} aria-hidden="true" />
+      </button>
+      {/*
+        Alignment/letter-spacing/line-height are TextBlock-level fields
+        (not Tiptap marks tied to a character selection like Bold/Italic/
+        Underline/Size above), so their buttons call onAlignChange/etc
+        directly instead of going through runFormatting/beginChain. They
+        keep the same onMouseDown preventDefault as every other button
+        anyway (harmless, avoids an unnecessary focus jump), just for
+        visual/interaction consistency with the rest of the toolbar.
+      */}
+      <button
+        type="button"
+        className={`rich-text-btn${align === "left" ? " is-active" : ""}`}
+        disabled={!editor}
+        aria-pressed={align === "left"}
+        aria-label="Align left"
+        title="Align left"
+        onMouseDown={preserveSelection}
+        onClick={() => onAlignChange("left")}
+      >
+        <AlignLeft size={15} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className={`rich-text-btn${align === "center" ? " is-active" : ""}`}
+        disabled={!editor}
+        aria-pressed={align === "center"}
+        aria-label="Align center"
+        title="Align center"
+        onMouseDown={preserveSelection}
+        onClick={() => onAlignChange("center")}
+      >
+        <AlignCenter size={15} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className={`rich-text-btn${align === "right" ? " is-active" : ""}`}
+        disabled={!editor}
+        aria-pressed={align === "right"}
+        aria-label="Align right"
+        title="Align right"
+        onMouseDown={preserveSelection}
+        onClick={() => onAlignChange("right")}
+      >
+        <AlignRight size={15} aria-hidden="true" />
       </button>
       <span className="rich-text-toolbar-divider" aria-hidden="true" />
       {/*
@@ -488,6 +628,33 @@ export function RichTextEditor({
           <Plus size={13} aria-hidden="true" />
         </button>
       </div>
+      {(letterSpacingDef || lineHeightDef) && (
+        <span className="rich-text-toolbar-divider" aria-hidden="true" />
+      )}
+      {letterSpacingDef && (
+        <ToolbarStepper
+          value={letterSpacing}
+          min={letterSpacingDef.min}
+          max={letterSpacingDef.max}
+          step={letterSpacingDef.step}
+          decimals={1}
+          ariaLabel="Letter spacing"
+          disabled={!editor}
+          onChange={onLetterSpacingChange}
+        />
+      )}
+      {lineHeightDef && (
+        <ToolbarStepper
+          value={lineHeightFactor}
+          min={lineHeightDef.min}
+          max={lineHeightDef.max}
+          step={lineHeightDef.step}
+          decimals={2}
+          ariaLabel="Line height"
+          disabled={!editor}
+          onChange={onLineHeightChange}
+        />
+      )}
     </div>
   );
 

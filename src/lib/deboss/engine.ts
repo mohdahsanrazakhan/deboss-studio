@@ -206,10 +206,11 @@ function tokenizeParagraph(runs: TextRun[]): Fragment[] {
   return fragments;
 }
 
-/** Measures one block's text (with styled runs) at a given content width. Logical (unscaled) px; PAD_X/PAD_Y are added by the caller. */
+/** Measures one block's text (with styled runs) at a given content width. Logical (unscaled) px; PAD_X/PAD_Y are added by the caller. `logicalW` is used only to recenter the block's own bounding box regardless of align (see the shift below); it doesn't affect wrapping, which still happens at `maxWidth`. */
 function measureRichLines(
   block: TextBlock,
   maxWidth: number,
+  logicalW: number,
 ): { fragments: Omit<MeasuredFragment, "y">[]; height: number }[] {
   const container = getMeasureContainer();
   container.style.width = `${maxWidth}px`;
@@ -335,14 +336,37 @@ function measureRichLines(
     };
   });
 
+  // Recenter the block's own bounding box at the canvas's horizontal
+  // center, regardless of align: container.style.textAlign above only
+  // justifies lines within the FULL maxWidth column, which would
+  // otherwise move a short block to a canvas edge when align changes
+  // instead of just re-justifying its text in place (same fix as
+  // buildBlockMask's plain-text tx formula; measureBlockBox's own
+  // width computation is unaffected by a uniform shift like this).
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const line of lines) {
+    for (const frag of line.fragments) {
+      minX = Math.min(minX, frag.x);
+      maxX = Math.max(maxX, frag.x + frag.width);
+    }
+  }
+  if (Number.isFinite(minX)) {
+    const blockWidth = maxX - minX;
+    const shift = logicalW / 2 - blockWidth / 2 - minX;
+    for (const line of lines) {
+      for (const frag of line.fragments) frag.x += shift;
+    }
+  }
+
   container.innerHTML = "";
   return lines;
 }
 
 /** One block's own content height (logical px) at a given wrap width, ignoring position — used only to decide the scene's canvas height (from textBlocks[0] alone, see computeLayout below). */
-function measureBlockContentHeight(block: TextBlock, maxWidth: number): number {
+function measureBlockContentHeight(block: TextBlock, maxWidth: number, logicalW: number): number {
   if (hasRichRuns(block.text)) {
-    const rawLines = measureRichLines(block, maxWidth);
+    const rawLines = measureRichLines(block, maxWidth, logicalW);
     return rawLines.reduce((sum, l) => sum + l.height, 0);
   }
   const lines = layoutLines(block, maxWidth);
@@ -358,7 +382,7 @@ function computeBlockLayout(
   logicalH: number,
 ): Layout {
   if (hasRichRuns(block.text)) {
-    const rawLines = measureRichLines(block, maxWidth);
+    const rawLines = measureRichLines(block, maxWidth, logicalW);
     const blockH = rawLines.reduce((sum, l) => sum + l.height, 0);
 
     let cursorY = (logicalH - blockH) / 2;
@@ -397,7 +421,7 @@ export function computeLayout(state: DebossState, logicalW: number): SceneLayout
 
   let logicalH: number;
   if (state.aspect === "auto") {
-    const contentH = primary ? measureBlockContentHeight(primary, maxWidth) : 0;
+    const contentH = primary ? measureBlockContentHeight(primary, maxWidth, logicalW) : 0;
     logicalH = Math.min(Math.max(contentH + PAD_Y * 2, MIN_LOGICAL_H), MAX_LOGICAL_H);
   } else {
     logicalH = Math.round(logicalW / ASPECT_RATIOS[state.aspect]);
@@ -651,16 +675,23 @@ function buildBlockMask(
   x.direction = detectTextDirection(block.text); // full bidi shaping for the detected script
   x.font = `${block.fontSize * s}px "${block.font}"`;
 
+  // Left/right align anchor at the SAME point center align always has
+  // (logicalW/2 + dx, the block's own drag position), offset by the
+  // block's own measured width, instead of the canvas-wide PAD_X/
+  // logicalW-PAD_X margins. Without this, switching align would move the
+  // whole block to a canvas edge instead of just re-justifying its text
+  // in place (computeContentBox, CanvasTextOverlay.tsx, must derive the
+  // identical box for the same reason).
   let tx: number;
   if (block.align === "center") {
     x.textAlign = "center";
     tx = (layout.logicalW / 2 + dx) * s;
   } else if (block.align === "right") {
     x.textAlign = "right";
-    tx = (layout.logicalW - PAD_X + dx) * s;
+    tx = (layout.logicalW / 2 + measureBlockBox(block, layout).width / 2 + dx) * s;
   } else {
     x.textAlign = "left";
-    tx = (PAD_X + dx) * s;
+    tx = (layout.logicalW / 2 - measureBlockBox(block, layout).width / 2 + dx) * s;
   }
 
   const blockH = layout.lines.length * layout.lineHeight;

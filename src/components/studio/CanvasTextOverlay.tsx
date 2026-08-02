@@ -43,14 +43,13 @@ function computeContentBox(block: TextBlock, layout: Layout, canvas: HTMLCanvasE
   const width = Math.max(measured.width + WRAP_SAFETY_MARGIN, MIN_HIT_WIDTH);
   const height = Math.max(measured.height, MIN_HIT_HEIGHT);
 
-  let left: number;
-  if (block.align === "center") {
-    left = layout.logicalW / 2 + dx - width / 2;
-  } else if (block.align === "right") {
-    left = layout.logicalW - PAD_X + dx - width;
-  } else {
-    left = PAD_X + dx;
-  }
+  // Always centered at the block's own anchor (logicalW/2 + dx),
+  // regardless of align: matches buildBlockMask's tx formula (engine.ts),
+  // which likewise centers the block's own hugging width at this same
+  // point instead of the canvas's PAD_X/logicalW-PAD_X margins, so
+  // alignment only re-justifies text within a fixed box instead of
+  // moving the whole block.
+  const left = layout.logicalW / 2 + dx - width / 2;
   const top = layout.logicalH / 2 + dy - height / 2;
 
   return { left: canvas.offsetLeft + left, top: canvas.offsetTop + top, width, height };
@@ -204,23 +203,16 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
       if (snapH) centerYNorm = 0.5;
       setActiveGuides({ v: snapV, h: snapH });
 
-      // Base center (the box's center when textAnchor is 0.5/0.5, i.e. dx=0)
-      // depends on align; the drag offset is the difference from there, the
-      // same relationship buildBlockMask's tx formulas encode.
-      let baseCenterXNorm: number;
-      if (block.align === "center") {
-        baseCenterXNorm = 0.5;
-      } else if (block.align === "right") {
-        baseCenterXNorm = (layout.logicalW - PAD_X - contentBox.width / 2) / layout.logicalW;
-      } else {
-        baseCenterXNorm = (PAD_X + contentBox.width / 2) / layout.logicalW;
-      }
-      const dxNorm = centerXNorm - baseCenterXNorm;
+      // The block's own box is always centered at logicalW/2 + dx
+      // regardless of align (see computeContentBox/buildBlockMask), so
+      // the base center (box center when textAnchor is 0.5/0.5, i.e.
+      // dx=0) is always 0.5, no align branching needed.
+      const dxNorm = centerXNorm - 0.5;
       const dyNorm = centerYNorm - 0.5;
 
       setBlockPosition(block.id, 0.5 + dxNorm, 0.5 + dyNorm);
     },
-    [state, canvasRef, block.id, block.align, contentBox, setBlockPosition, setSelectedBlockId, setActiveGuides],
+    [state, canvasRef, block.id, contentBox, setBlockPosition, setSelectedBlockId, setActiveGuides],
   );
 
   const handlePointerUp = useCallback(
@@ -322,8 +314,11 @@ function BlockOverlay({ studio, block, contentBox, editBox, isSelected, isEditin
             align={block.align}
             letterSpacing={block.letterSpacing}
             lineHeightFactor={block.lineHeightFactor}
+            onAlignChange={(align) => updateTextBlock(block.id, { align })}
+            onLetterSpacingChange={(letterSpacing) => updateTextBlock(block.id, { letterSpacing })}
+            onLineHeightChange={(lineHeightFactor) => updateTextBlock(block.id, { lineHeightFactor })}
             isEditing={isEditing}
-            anchorBox={contentBox}
+            canvasRef={canvasRef}
           />
         </div>
       )}
