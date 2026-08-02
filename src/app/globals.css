@@ -1503,12 +1503,13 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
     background: repeating-conic-gradient(#eeeae1 0% 25%, #f7f4ee 0% 50%) 0 0 / 14px 14px;
   }
 
-  /* The floating formatting toolbar docks as a full-width bar at the top
-     of the screen instead of floating near the block (RichTextEditor.tsx
-     skips its own inline top/left when isMobileDocked, matching this same
-     max-width:880px breakpoint): small screens don't have room to spare
-     for a floating pill, and a block near the top edge would otherwise
-     constantly hit the flip-below case. Same z-index (46) as the floating
+  /* The floating formatting toolbar docks as a full-width bar at the
+     BOTTOM of the screen instead of floating near the block
+     (RichTextEditor.tsx skips its own inline top/left when
+     isMobileDocked, matching this same max-width:880px breakpoint):
+     small screens don't have room to spare for a floating pill, and a
+     bottom-anchored bar keeps it within easy thumb reach without
+     covering the canvas from above. Same z-index (46) as the floating
      variant; ControlPanel.tsx's mobile-menu deselects the block before
      opening a sheet, so this never has to compete with .mini-preview or
      .section-modal-panel for the same space.
@@ -1520,7 +1521,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
      scrolling, not squishing, is what happens once content overflows. */
   .rich-text-toolbar.is-docked {
     position: fixed;
-    top: env(safe-area-inset-top, 0px);
+    bottom: env(safe-area-inset-bottom, 0px);
     left: 0;
     right: 0;
     width: 100%;
@@ -1530,7 +1531,7 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     border-radius: 0;
-    border-width: 0 0 1px;
+    border-width: 1px 0 0;
   }
   .rich-text-toolbar.is-docked::-webkit-scrollbar { display: none; }
 
@@ -1558,21 +1559,29 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
   }
 
   /* The letter-spacing/line-height popover spans the full screen width
-     below the docked bar instead of a small floating card (which would
-     otherwise be anchored to wherever its toggle button happens to have
-     scrolled to in the row above), matching the docked toolbar's own
-     full-width treatment. `spacingPanelTop` (RichTextEditor.tsx) measures
-     the docked toolbar's actual live height so this sits flush beneath
-     it regardless of safe-area insets or viewport-specific button sizing. */
+     ABOVE the docked bar (which now sits at the bottom of the screen)
+     instead of a small floating card (which would otherwise be anchored
+     to wherever its toggle button happens to have scrolled to in the row
+     below), matching the docked toolbar's own full-width treatment.
+     `spacingPanelOffset` (RichTextEditor.tsx) measures the docked
+     toolbar's actual live height so this sits flush above it regardless
+     of safe-area insets or viewport-specific button sizing. */
   .rich-text-spacing-panel {
     position: fixed;
-    top: var(--spacing-panel-top, 100%);
+    /* Must reset the desktop rule's own `top` (calc(100% + 8px), meant
+       for that rule's absolute-positioned floating card): position:fixed
+       with BOTH top and bottom set (and no explicit height) stretches
+       the box to fill the space between them instead of respecting
+       either edge on its own, which is what was pinning this popup to
+       the top of the screen instead of flush above the docked bar. */
+    top: auto;
+    bottom: var(--spacing-panel-offset, 100%);
     left: 0;
     right: 0;
     width: 100%;
     transform: none;
     border-radius: 0;
-    border-width: 0 0 1px;
+    border-width: 1px 0 0;
   }
 }
 

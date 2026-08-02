@@ -163,17 +163,20 @@ export function RichTextEditor({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [spacingPanelOpen]);
 
-  // On mobile the panel goes full-width below the docked bar (see
-  // globals.css's `.rich-text-spacing-panel` mobile override), which
-  // needs the bar's actual live height (safe-area insets/button sizing
-  // vary) rather than a hardcoded CSS offset, so it's measured here and
-  // passed down as a CSS custom property.
-  const [spacingPanelTop, setSpacingPanelTop] = useState(0);
+  // On mobile the panel goes full-width above the docked bar, which now
+  // sits at the BOTTOM of the screen (see globals.css's
+  // `.rich-text-spacing-panel` mobile override), which needs the bar's
+  // actual live height (safe-area insets/button sizing vary) rather than
+  // a hardcoded CSS offset, so it's measured here and passed down as a
+  // CSS custom property: the distance from the viewport's bottom edge up
+  // to the toolbar's own top edge is exactly how far up the panel needs
+  // to sit to land flush above it.
+  const [spacingPanelOffset, setSpacingPanelOffset] = useState(0);
   useLayoutEffect(() => {
     if (!isMobileDocked || !spacingPanelOpen) return;
     const update = () => {
       const rect = toolbarRef.current?.getBoundingClientRect();
-      if (rect) setSpacingPanelTop(rect.bottom);
+      if (rect) setSpacingPanelOffset(window.innerHeight - rect.top);
     };
     update();
     window.addEventListener("resize", update);
@@ -638,7 +641,7 @@ export function RichTextEditor({
           {spacingPanelOpen && (
             <div
               className="rich-text-spacing-panel"
-              style={isMobileDocked ? ({ "--spacing-panel-top": `${spacingPanelTop}px` } as React.CSSProperties) : undefined}
+              style={isMobileDocked ? ({ "--spacing-panel-offset": `${spacingPanelOffset}px` } as React.CSSProperties) : undefined}
               role="dialog"
               aria-label="Letter and line spacing"
             >
