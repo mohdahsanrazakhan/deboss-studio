@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, Minus, Plus, Underline as UnderlineIcon } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, AlignVerticalSpaceAround, Bold, Italic, Minus, Plus, Underline as UnderlineIcon } from "lucide-react";
 import type { FontFamily, TextAlign } from "@/types/deboss";
 import { CURSIVE_SCRIPT_FONTS, FONT_CAPABILITIES, TYPE_SLIDER_DEFS } from "@/lib/deboss/constants";
 import { detectTextDirection } from "@/lib/deboss/direction";
@@ -83,94 +83,6 @@ function getCurrentSize(editor: Editor | null, baseSize: number): number {
   return typeof attrs.size === "number" ? attrs.size : baseSize;
 }
 
-type ToolbarStepperProps = {
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  /** Decimal places shown/rounded to (0 for a whole-number field). */
-  decimals: number;
-  ariaLabel: string;
-  disabled: boolean;
-  onChange: (value: number) => void;
-};
-
-/**
- * Generic pill stepper (-/[editable input]/+), same visual/interaction
- * pattern as the font-size stepper below (draft-state input that only
- * re-syncs from `value` while unfocused, commits on blur/Enter, clamped).
- * Used ONLY by the new letter-spacing/line-height controls: the existing
- * font-size stepper stays a separate, untouched implementation since it's
- * tightly coupled to Tiptap's mark/selection commands, a different commit
- * path than these two, which call a plain onChange straight through to
- * updateTextBlock (CanvasTextOverlay.tsx).
- */
-function ToolbarStepper({ value, min, max, step, decimals, ariaLabel, disabled, onChange }: ToolbarStepperProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState(value.toFixed(decimals));
-  useEffect(() => {
-    if (document.activeElement !== inputRef.current) setDraft(value.toFixed(decimals));
-  }, [value, decimals]);
-
-  const commit = (raw: number) => {
-    const rounded = Number(raw.toFixed(decimals));
-    const next = Math.min(max, Math.max(min, rounded));
-    onChange(next);
-    setDraft(next.toFixed(decimals));
-  };
-  const bump = (delta: number) => commit(value + delta);
-  const commitDraft = () => {
-    const parsed = Number.parseFloat(draft);
-    if (Number.isFinite(parsed)) commit(parsed);
-    else setDraft(value.toFixed(decimals)); // empty/invalid: revert, don't apply
-  };
-
-  return (
-    <div className="rich-text-size-stepper">
-      <button
-        type="button"
-        className="rich-text-size-btn"
-        disabled={disabled || value <= min}
-        aria-label={`Decrease ${ariaLabel}`}
-        title={`Decrease ${ariaLabel}`}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => bump(-step)}
-      >
-        <Minus size={13} aria-hidden="true" />
-      </button>
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="decimal"
-        className="rich-text-size-input"
-        disabled={disabled}
-        aria-label={ariaLabel}
-        title={ariaLabel}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value.replace(/[^0-9.-]/g, ""))}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            commitDraft();
-          }
-        }}
-        onBlur={commitDraft}
-      />
-      <button
-        type="button"
-        className="rich-text-size-btn"
-        disabled={disabled || value >= max}
-        aria-label={`Increase ${ariaLabel}`}
-        title={`Increase ${ariaLabel}`}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => bump(step)}
-      >
-        <Plus size={13} aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
-
 /**
  * Full WYSIWYG rich-text editor for the studio's text input (replaces the
  * plain <textarea>): select text, toggle Bold/Italic/Underline, or set its
@@ -230,6 +142,25 @@ export function RichTextEditor({
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  // Letter-spacing/line-height live in a small labeled popover (Canva-
+  // style) instead of two bare unlabeled steppers, which were reported as
+  // confusing on their own. Rendered as a normal DOM child of the toolbar
+  // (not a separate portal): the toolbar is already portaled to <body>
+  // and has no overflow clipping, and keeping it a descendant means
+  // CanvasTextOverlay.tsx's existing `.closest(".rich-text-toolbar")`
+  // outside-pointerdown exception already covers it for free, no new
+  // dismiss-check special-casing needed there.
+  const [spacingPanelOpen, setSpacingPanelOpen] = useState(false);
+  const spacingWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!spacingPanelOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!spacingWrapRef.current?.contains(e.target as Node)) setSpacingPanelOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [spacingPanelOpen]);
 
   // Portaled to <body> (see the toolbar's render below) so it's never
   // clipped by `.stage-inner`'s `overflow: hidden` (its positioning
@@ -631,29 +562,62 @@ export function RichTextEditor({
       {(letterSpacingDef || lineHeightDef) && (
         <span className="rich-text-toolbar-divider" aria-hidden="true" />
       )}
-      {letterSpacingDef && (
-        <ToolbarStepper
-          value={letterSpacing}
-          min={letterSpacingDef.min}
-          max={letterSpacingDef.max}
-          step={letterSpacingDef.step}
-          decimals={1}
-          ariaLabel="Letter spacing"
-          disabled={!editor}
-          onChange={onLetterSpacingChange}
-        />
-      )}
-      {lineHeightDef && (
-        <ToolbarStepper
-          value={lineHeightFactor}
-          min={lineHeightDef.min}
-          max={lineHeightDef.max}
-          step={lineHeightDef.step}
-          decimals={2}
-          ariaLabel="Line height"
-          disabled={!editor}
-          onChange={onLineHeightChange}
-        />
+      {(letterSpacingDef || lineHeightDef) && (
+        <div className="rich-text-spacing-wrap" ref={spacingWrapRef}>
+          <button
+            type="button"
+            className={`rich-text-btn${spacingPanelOpen ? " is-active" : ""}`}
+            disabled={!editor}
+            aria-pressed={spacingPanelOpen}
+            aria-expanded={spacingPanelOpen}
+            aria-label="Letter and line spacing"
+            title="Letter and line spacing"
+            onMouseDown={preserveSelection}
+            onClick={() => setSpacingPanelOpen((v) => !v)}
+          >
+            <AlignVerticalSpaceAround size={15} aria-hidden="true" />
+          </button>
+          {spacingPanelOpen && (
+            <div className="rich-text-spacing-panel" role="dialog" aria-label="Letter and line spacing">
+              {letterSpacingDef && (
+                <div className="slider">
+                  <div className="slider-head">
+                    <label htmlFor="rt-letter-spacing">Letter spacing</label>
+                    <output htmlFor="rt-letter-spacing">{letterSpacing.toFixed(1)}</output>
+                  </div>
+                  <input
+                    type="range"
+                    id="rt-letter-spacing"
+                    min={letterSpacingDef.min}
+                    max={letterSpacingDef.max}
+                    step={letterSpacingDef.step}
+                    disabled={!editor}
+                    value={letterSpacing}
+                    onChange={(e) => onLetterSpacingChange(Number(e.target.value))}
+                  />
+                </div>
+              )}
+              {lineHeightDef && (
+                <div className="slider">
+                  <div className="slider-head">
+                    <label htmlFor="rt-line-height">Line height</label>
+                    <output htmlFor="rt-line-height">{lineHeightFactor.toFixed(2)}</output>
+                  </div>
+                  <input
+                    type="range"
+                    id="rt-line-height"
+                    min={lineHeightDef.min}
+                    max={lineHeightDef.max}
+                    step={lineHeightDef.step}
+                    disabled={!editor}
+                    value={lineHeightFactor}
+                    onChange={(e) => onLineHeightChange(Number(e.target.value))}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

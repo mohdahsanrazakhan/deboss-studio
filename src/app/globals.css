@@ -482,6 +482,23 @@ body {
   opacity: .35;
 }
 
+/* Letter-spacing/line-height popover (Canva-style): a labeled panel
+   instead of two bare unlabeled steppers. Positioned as a normal child
+   of the (already body-portaled, unclipped) toolbar, so no extra portal
+   is needed; reuses the sidebar's own .slider/.slider-head/
+   input[type="range"] styling (globals.css) for visual consistency. */
+.rich-text-spacing-wrap { position: relative; display: inline-flex; }
+.rich-text-spacing-panel {
+  position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  width: 220px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-md);
+  z-index: 1;
+}
+
 /* Finger-friendly touch targets (WCAG 2.5.5 / Apple HIG's 44x44px
    minimum), scoped to touch-capable devices via `pointer: coarse` so the
    desktop toolbar stays compact; a device with both a mouse and a
