@@ -13,20 +13,20 @@ import { ChevronDown } from "lucide-react";
 
 const HOW_IT_WORKS = [
   {
-    title: "Add & arrange text",
-    body: "Click anywhere on the canvas to add a text block, or click existing text to edit it. Add as many blocks as you like and drag each into place; direction (RTL or LTR) is detected automatically per block.",
+    title: "Add & format text",
+    body: "Click the canvas to add a text block, or click an existing one to select it, then click again to edit. A floating toolbar lets you bold, italicize, underline, strike through, or uppercase your text, plus set alignment, letter-spacing, and line height, all per block. Drag blocks into place; they snap to center with a guide line. Direction (RTL or LTR) is detected automatically.",
   },
   {
     title: "Tune the engraving",
-    body: "Adjust depth, shadow, highlight, blur, and paper texture, or apply a one-click preset to start from a look you like.",
+    body: "Adjust depth, shadow, highlight, blur, and paper texture, or apply a one-click preset for depth, paper, and text colour together.",
   },
   {
-    title: "Pick a font and paper",
-    body: "Choose from fourteen fonts spanning Urdu, Arabic, Latin, and Devanagari, a paper tone, alignment, and canvas shape.",
+    title: "Pick a font, paper & signature",
+    body: "Choose from fourteen fonts spanning Urdu, Arabic, Latin, and Devanagari, a paper tone, and canvas shape. Add a small watermark too, like your handle, in the Branding field; it debosses to match your text automatically and can be dragged anywhere.",
   },
   {
-    title: "Export",
-    body: "Download a high-resolution PNG, copy it straight to your clipboard, or share it to Instagram and other apps on mobile.",
+    title: "Export & share",
+    body: "Download a high-resolution PNG, copy it straight to your clipboard, or share it to Instagram and other apps on mobile. Love a look? Save it as a set, or request to have it featured in the gallery.",
   },
 ];
 
@@ -55,6 +55,26 @@ const FAQ_ITEMS = [
     question: "Can I save my own style and reuse it later?",
     answer:
       'Yes. Save any combination of font, paper, tint, and engraving settings as a named "set," and optionally star one as your default so it applies automatically the next time you open the studio.',
+  },
+  {
+    question: "Can I format text with bold, italic, underline, and more?",
+    answer:
+      "Yes. Click a text block to select it, and a floating toolbar appears with bold, italic, underline, strikethrough, and uppercase toggles, plus alignment, letter-spacing, and line-height controls, all applied per block so different lines can look completely different.",
+  },
+  {
+    question: "Can I add a watermark or signature, like my Instagram handle?",
+    answer:
+      "Yes. Type anything into the Branding field and it appears as a small watermark, fully debossed to match the rest of your design. It automatically tracks your main text's font at a proportionally smaller size, or you can give it its own font and size. Drag it anywhere on the canvas.",
+  },
+  {
+    question: "Can I get my design featured in the public gallery?",
+    answer:
+      'Yes. Save a look as a "set," then use "Request to post" from that set or the Create button in the navbar. After a quick one-time-code email verification, your submission is reviewed, and if it\'s a good fit, it gets added to the gallery.',
+  },
+  {
+    question: "Does Text Deboss Studio work well on mobile?",
+    answer:
+      "Yes. The entire studio, including the text-formatting toolbar, is fully touch-friendly and adapts to small screens, docking the toolbar at the bottom of the screen for easy one-handed reach.",
   },
   {
     question: "Is Text Deboss Studio free to use?",
