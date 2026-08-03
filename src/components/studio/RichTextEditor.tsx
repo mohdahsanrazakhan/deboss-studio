@@ -122,6 +122,11 @@ export function RichTextEditor({
   maxLengthRef.current = maxLength;
 
   const toolbarRef = useRef<HTMLDivElement>(null);
+  // The inner scrolling row of buttons (mobile-docked mode only); kept
+  // distinct from toolbarRef, which stays on the OUTER, non-scrolling
+  // element (see the CSS comment on `.rich-text-toolbar.is-docked`'s edge
+  // blur strips for why the two need to be different elements).
+  const scrollRowRef = useRef<HTMLDivElement>(null);
   const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number }>({
     top: -9999,
     left: -9999,
@@ -143,6 +148,38 @@ export function RichTextEditor({
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  // Edge fade hint (Canva-style) for the docked mobile bar: it's a single
+  // horizontally-scrollable row (globals.css's `overflow-x: auto`, on
+  // `.rich-text-toolbar-row`, not the outer `.rich-text-toolbar`) with no
+  // other affordance suggesting that, so a first-time user has no reason to
+  // suspect there's more off to the side. Drives the `can-scroll-left`/
+  // `can-scroll-right` classes below, which toggle a solid-to-transparent
+  // gradient strip in on whichever edge still has more content to reveal
+  // (globals.css's `::before`/`::after` on the OUTER, non-scrolling
+  // `.rich-text-toolbar.is-docked`), and fade it back out once you've
+  // scrolled all the way to that edge: by default only the right strip
+  // shows, only the left strip shows once fully scrolled right, and both
+  // show in between. Measured off scrollRowRef (the actual scrolling
+  // element), not toolbarRef (the outer, non-scrolling frame).
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  useEffect(() => {
+    if (!isMobileDocked) return;
+    const el = scrollRowRef.current;
+    if (!el) return;
+    const update = () => {
+      setCanScrollLeft(el.scrollLeft > 2);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [isMobileDocked]);
 
   // Letter-spacing/line-height live in a small labeled popover (Canva-
   // style) instead of two bare unlabeled steppers, which were reported as
@@ -434,11 +471,12 @@ export function RichTextEditor({
   const toolbar = (
     <div
       ref={toolbarRef}
-      className={`rich-text-toolbar${isMobileDocked ? " is-docked" : ""}`}
+      className={`rich-text-toolbar${isMobileDocked ? " is-docked" : ""}${canScrollLeft ? " can-scroll-left" : ""}${canScrollRight ? " can-scroll-right" : ""}`}
       role="toolbar"
       aria-label="Text formatting"
       style={isMobileDocked ? undefined : { top: toolbarPos.top, left: toolbarPos.left }}
     >
+      <div className="rich-text-toolbar-row" ref={scrollRowRef}>
       <button
         type="button"
         className={`rich-text-btn${editor?.isActive("bold") ? " is-active" : ""}`}
@@ -685,6 +723,7 @@ export function RichTextEditor({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 

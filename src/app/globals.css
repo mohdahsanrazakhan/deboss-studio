@@ -379,14 +379,23 @@ body {
 .rich-text-toolbar {
   position: fixed;
   z-index: 46;
-  display: flex;
-  align-items: center;
-  gap: 4px;
   padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel);
   box-shadow: var(--shadow-md);
+  white-space: nowrap;
+}
+/* The actual flex row of buttons, one level in from `.rich-text-toolbar`
+   itself: see the mobile-docked comment below (`.rich-text-toolbar.is-
+   docked`) for why the scrolling and the fixed-position framing/blur
+   strips need to live on two DIFFERENT elements rather than one. On
+   desktop this is a plain unconditional wrapper with no behavioural
+   difference from the old single-element layout. */
+.rich-text-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
 }
 .rich-text-toolbar-divider {
@@ -538,7 +547,8 @@ body {
    touchscreen gets the roomier size too, matching whichever input it
    advertises as primary. */
 @media (pointer: coarse) {
-  .rich-text-toolbar { gap: 6px; padding: 8px; }
+  .rich-text-toolbar { padding: 8px; }
+  .rich-text-toolbar-row { gap: 6px; }
   .rich-text-btn { min-width: 44px; height: 44px; font-size: .95rem; }
   .rich-text-toolbar-divider { height: 28px; }
   /* +2px over the 44px target: .rich-text-size-btn fills the stepper's
@@ -1518,22 +1528,74 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
      lines: every control stays reachable via horizontal swipe instead of
      the bar growing taller and eating into canvas space. Children keep
      their own flex-shrink:0 (set alongside each control's own rule) so
-     scrolling, not squishing, is what happens once content overflows. */
+     scrolling, not squishing, is what happens once content overflows.
+
+     The scrolling itself lives on `.rich-text-toolbar-row` (the inner
+     wrapper around the buttons), NOT on `.rich-text-toolbar` itself, even
+     though this element is what's visually "the bar": the edge blur strips
+     below are `::before`/`::after` of THIS (outer) element specifically so
+     they stay genuinely fixed at the bar's true left/right edges. Putting
+     the blur strips as pseudo-elements of the SAME element that scrolls
+     shipped as a real bug once: the strips visibly drifted into the middle
+     of the row as it scrolled instead of staying pinned to the edges. With
+     scrolling moved one level down to the row, this element's own box
+     never moves, so its pseudo-elements can't move either. */
   .rich-text-toolbar.is-docked {
     position: fixed;
     bottom: env(safe-area-inset-bottom, 0px);
     left: 0;
     right: 0;
     width: 100%;
+    border-radius: 0;
+    border-width: 1px 0 0;
+  }
+  .rich-text-toolbar.is-docked .rich-text-toolbar-row {
     justify-content: flex-start;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    border-radius: 0;
-    border-width: 1px 0 0;
   }
-  .rich-text-toolbar.is-docked::-webkit-scrollbar { display: none; }
+  .rich-text-toolbar.is-docked .rich-text-toolbar-row::-webkit-scrollbar { display: none; }
+
+  /* Edge fade hint: nothing else about this row signals it scrolls
+     horizontally, so a first-time user has no reason to suspect there's
+     more off to the side. Plain solid-to-transparent gradient strips, not
+     `backdrop-filter: blur()`: masking a backdrop-filter element (needed to
+     taper the blur's own strength) turned out to silently suppress the
+     filter entirely on several mobile WebKit/Blink builds, so the blur
+     never rendered at all in practice. This is the classic, broadly
+     compatible technique instead: fades to `var(--panel)` (the bar's own
+     background) rather than a hardcoded white so it still matches on a
+     dark paper tone. `can-scroll-left`/`can-scroll-right` (RichTextEditor.tsx,
+     from the row's live scrollLeft/scrollWidth) toggle each strip's
+     opacity, so the hint only ever appears on the edge that still has more
+     to reveal: by default (leftmost) only the right strip shows, at the
+     rightmost only the left strip shows, and both show in between. These
+     stay on the OUTER `.rich-text-toolbar` (see the comment above), not the
+     scrolling row, so they never drift with scroll position. */
+  .rich-text-toolbar.is-docked::before,
+  .rich-text-toolbar.is-docked::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 56px;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .32s cubic-bezier(.22,.61,.36,1);
+  }
+  .rich-text-toolbar.is-docked::before {
+    left: 0;
+    background: linear-gradient(to right, var(--panel) 0%, transparent 100%);
+  }
+  .rich-text-toolbar.is-docked::after {
+    right: 0;
+    background: linear-gradient(to left, var(--panel) 0%, transparent 100%);
+  }
+  .rich-text-toolbar.is-docked.can-scroll-left::before { opacity: 1; }
+  .rich-text-toolbar.is-docked.can-scroll-right::after { opacity: 1; }
 
   /* Icon + small label stacked, Canva-style: the docked row has a full
      width to spare and pure icons alone were reported as unclear. Only
