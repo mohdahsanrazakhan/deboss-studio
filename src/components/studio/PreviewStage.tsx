@@ -3,6 +3,7 @@
 import { Copy, Download, Pencil, Share2 } from "lucide-react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
 import { BrandingHandle } from "./BrandingHandle";
+import { LogoHandle } from "./LogoHandle";
 import { CanvasTextOverlay } from "./CanvasTextOverlay";
 
 export function PreviewStage({ studio }: { studio: DebossStudio }) {
@@ -50,6 +51,7 @@ export function PreviewStage({ studio }: { studio: DebossStudio }) {
         />
         <CanvasTextOverlay studio={studio} />
         <BrandingHandle studio={studio} />
+        <LogoHandle studio={studio} />
       </div>
 
       <div className="stage-bar">

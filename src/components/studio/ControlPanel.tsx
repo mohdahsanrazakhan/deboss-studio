@@ -1,14 +1,18 @@
 "use client";
 
 import { Layers, Plus, SlidersHorizontal, Star, Type as TypeIcon, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DebossStudio } from "@/hooks/useDebossStudio";
-import type { AspectId, FontFamily } from "@/types/deboss";
+import type { AspectId, FontFamily, LogoAnchor, LogoStyle, LogoTone } from "@/types/deboss";
 import {
   ASPECT_OPTIONS,
   BRANDING_FONT_SIZE_MAX,
   BRANDING_FONT_SIZE_MIN,
   FONT_OPTIONS,
+  LOGO_OPACITY_MIN,
+  LOGO_SCALE_MAX,
+  LOGO_SCALE_MIN,
+  LOGO_SRC,
   MAX_BRANDING_LENGTH,
   MAX_SET_NAME_LENGTH,
   PAPER_TONES,
@@ -16,7 +20,7 @@ import {
   SLIDER_DEFS,
   rgbToHex,
 } from "@/lib/deboss/constants";
-import { resolveBrandingFont, resolveBrandingFontSize } from "@/lib/deboss/engine";
+import { resolveBrandingFont, resolveBrandingFontSize, resolveLogoTone } from "@/lib/deboss/engine";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { RequestPostButton } from "./RequestPostButton";
 import { SectionSheet } from "./SectionSheet";
@@ -38,6 +42,28 @@ const MOBILE_MENU: { id: string; label: string; Icon: typeof Layers }[] = [
   { id: "type-paper", label: "Type & Paper", Icon: TypeIcon },
 ];
 
+/** The 3x3 snap grid for the logo watermark, in reading order. */
+const LOGO_POSITIONS: { id: Exclude<LogoAnchor, "custom">; label: string }[] = [
+  { id: "tl", label: "Top left" },
+  { id: "tc", label: "Top center" },
+  { id: "tr", label: "Top right" },
+  { id: "ml", label: "Middle left" },
+  { id: "c", label: "Center" },
+  { id: "mr", label: "Middle right" },
+  { id: "bl", label: "Bottom left" },
+  { id: "bc", label: "Bottom center" },
+  { id: "br", label: "Bottom right" },
+];
+const LOGO_TONES: { id: LogoTone; label: string }[] = [
+  { id: "auto", label: "Auto" },
+  { id: "dark", label: "Dark" },
+  { id: "light", label: "Light" },
+];
+const LOGO_STYLES: { id: LogoStyle; label: string }[] = [
+  { id: "ink", label: "Ink" },
+  { id: "debossed", label: "Debossed" },
+];
+
 function formatSliderValue(v: number): string {
   return v.toFixed(2).replace(/\.00$/, ".0");
 }
@@ -57,6 +83,7 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
     setBrandingText,
     setBrandingFont,
     setBrandingFontSize,
+    updateLogo,
     setSlider,
     setPaper,
     setTint,
@@ -84,10 +111,21 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
 
   // UI-only: which section is open, shared by the mobile bottom sheet AND
   // the desktop accordion (see SectionSheet) so exactly one is ever open
-  // either way. Starts fully collapsed on both: nothing to open on mobile
-  // until a mobile-menu button is tapped, and starting collapsed on desktop
-  // is what keeps the sidebar short until the user picks something to tweak.
+  // either way. Starts null (matches the server render, and on mobile
+  // nothing should open until a mobile-menu button is tapped); on desktop
+  // the effect below then opens "Presets & Sets" by default.
   const [openSection, setOpenSection] = useState<string | null>(null);
+
+  // Desktop only: the same state on mobile would pop the Presets bottom
+  // sheet open on every page load. 880px must match the max-width:880px
+  // switchover in globals.css (and SectionSheet.tsx's matchMedia). Done
+  // after mount, not as the useState initializer, so SSR and the first
+  // client render agree (no hydration mismatch). The functional update
+  // leaves any section the user already opened alone.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 880px)").matches) return;
+    setOpenSection((cur) => cur ?? "presets");
+  }, []);
   const closeSection = () => setOpenSection(null);
   const toggleSection = (id: string) =>
     setOpenSection((cur) => (cur === id ? null : id));
@@ -419,6 +457,121 @@ export function ControlPanel({ studio }: { studio: DebossStudio }) {
             <p className="field-hint">Drag it on the canvas to reposition.</p>
           </>
         )}
+
+        {/* Logo watermark: an image mark (public/watermark/), separate
+            from the text Branding above. Settings persist across sessions
+            (useDebossStudio.ts), so once it's on it stays on every post. */}
+        <div className="logo-wm">
+          <div className="field-row">
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                id="logoEnabled"
+                checked={state.logo.enabled}
+                onChange={(e) => updateLogo({ enabled: e.target.checked })}
+              />
+              <span>Logo watermark</span>
+            </label>
+            {/* eslint-disable-next-line @next/next/no-img-element -- tiny static same-origin thumbnail, next/image adds nothing here */}
+            <img
+              className={`logo-wm-thumb${resolveLogoTone(state) === "light" ? " is-light" : ""}`}
+              src={LOGO_SRC[resolveLogoTone(state)]}
+              alt=""
+              width={96}
+              height={20}
+            />
+          </div>
+          {state.logo.enabled && (
+            <>
+              <div className="field-row">
+                <span id="logo-pos-label">Position</span>
+                <div className="logo-pos-grid" role="group" aria-labelledby="logo-pos-label">
+                  {LOGO_POSITIONS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`logo-pos-btn${state.logo.anchor === p.id ? " is-active" : ""}`}
+                      aria-label={p.label}
+                      aria-pressed={state.logo.anchor === p.id}
+                      title={p.label}
+                      onClick={() => updateLogo({ anchor: p.id })}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="slider">
+                <div className="slider-head">
+                  <label htmlFor="logoScale">Logo size</label>
+                  <output htmlFor="logoScale">{Math.round(state.logo.scale * 100)}%</output>
+                </div>
+                <input
+                  type="range"
+                  id="logoScale"
+                  min={LOGO_SCALE_MIN}
+                  max={LOGO_SCALE_MAX}
+                  step={0.01}
+                  value={state.logo.scale}
+                  onChange={(e) => updateLogo({ scale: Number(e.target.value) })}
+                />
+              </div>
+
+              <div className="slider">
+                <div className="slider-head">
+                  <label htmlFor="logoOpacity">Logo opacity</label>
+                  <output htmlFor="logoOpacity">{Math.round(state.logo.opacity * 100)}%</output>
+                </div>
+                <input
+                  type="range"
+                  id="logoOpacity"
+                  min={LOGO_OPACITY_MIN}
+                  max={1}
+                  step={0.01}
+                  value={state.logo.opacity}
+                  onChange={(e) => updateLogo({ opacity: Number(e.target.value) })}
+                />
+              </div>
+
+              <div className="field-row">
+                <span id="logo-tone-label">Logo colour</span>
+                <div className="seg" role="group" aria-labelledby="logo-tone-label">
+                  {LOGO_TONES.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`seg-btn${state.logo.tone === t.id ? " is-active" : ""}`}
+                      aria-pressed={state.logo.tone === t.id}
+                      disabled={state.logo.style === "debossed"}
+                      onClick={() => updateLogo({ tone: t.id })}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field-row">
+                <span id="logo-style-label">Logo style</span>
+                <div className="seg" role="group" aria-labelledby="logo-style-label">
+                  {LOGO_STYLES.map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      className={`seg-btn${state.logo.style === st.id ? " is-active" : ""}`}
+                      aria-pressed={state.logo.style === st.id}
+                      onClick={() => updateLogo({ style: st.id })}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="field-hint">
+                Drag the logo on the canvas for a custom spot; near a grid position it snaps back exactly.
+              </p>
+            </>
+          )}
+        </div>
 
         <div className="field-row">
           <span id="paper-label">Paper tone</span>

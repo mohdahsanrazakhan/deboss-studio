@@ -98,6 +98,31 @@ export interface DebossState {
   brandingFont: FontFamily | null;
   /** null = auto-derive proportionally from textBlocks[0]'s fontSize (see resolveBrandingFontSize, engine.ts); a concrete value = independently overridden. */
   brandingFontSize: number | null;
+  /** Image logo watermark (public/watermark/), independent of the text-based branding above. */
+  logo: LogoWatermark;
+}
+
+/** Snap positions for the logo watermark: t/m/b = top/middle/bottom row, l/c/r = left/center/right column. "custom" = dragged freely (uses LogoWatermark.x/y). */
+export type LogoAnchor = "tl" | "tc" | "tr" | "ml" | "c" | "mr" | "bl" | "bc" | "br" | "custom";
+
+/** "auto" picks the dark logo on light paper and the light logo on dark paper (isPaperDark, engine.ts). */
+export type LogoTone = "auto" | "dark" | "light";
+
+/** "ink" = printed in the logo's own colours; "debossed" = pressed into the paper through the same engraving pipeline as text. */
+export type LogoStyle = "ink" | "debossed";
+
+export interface LogoWatermark {
+  enabled: boolean;
+  anchor: LogoAnchor;
+  /** Normalized (0-1) center of the logo; only read when anchor === "custom". */
+  x: number;
+  y: number;
+  /** Logo width as a fraction of the canvas's logical width. */
+  scale: number;
+  /** 0-1. */
+  opacity: number;
+  tone: LogoTone;
+  style: LogoStyle;
 }
 
 export type PresetId = "soft" | "deep" | "letterpress" | "luxury";
@@ -129,7 +154,7 @@ export interface CustomSet {
   name: string;
   createdAt: number;
   /** Excludes `textBlocks` entirely (a Set is a reusable look, not pinned content, styling, or position) and the branding fields (personal metadata orthogonal to "the look," not part of a saved style). */
-  state: Omit<DebossState, "textBlocks" | "brandingText" | "brandingX" | "brandingY" | "brandingFont" | "brandingFontSize">;
+  state: Omit<DebossState, "textBlocks" | "brandingText" | "brandingX" | "brandingY" | "brandingFont" | "brandingFontSize" | "logo">;
 }
 
 /**

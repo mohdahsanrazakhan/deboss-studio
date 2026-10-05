@@ -56,6 +56,22 @@ export const BRANDING_DEFAULT_SIZE_RATIO = 0.35;
 /** Perceived-luminance (0-255) cutoff below which paper counts as "dark" (isPaperDark, engine.ts; used by CanvasTextOverlay.tsx's live-editing overlay colour). */
 export const BRANDING_PAPER_LUMINANCE_THRESHOLD = 140;
 
+/** Logo watermark files (public/watermark/), tight-cropped to the ink so edge margins measure from the visible mark. Versioned filenames because public/sw.js serves same-origin assets cache-first: replace the art by bumping the suffix, never by overwriting in place. */
+export const LOGO_SRC = {
+  dark: "/watermark/harf-o-mani-dark-v1.png",
+  light: "/watermark/harf-o-mani-light-v1.png",
+} as const;
+/** Width / height of both LOGO_SRC files (2000x415). Known up front so the logo box (and its drag handle) can be sized before the image has loaded. */
+export const LOGO_ASPECT = 2000 / 415;
+/** Gap between a snapped logo and the canvas edge, as a fraction of the canvas's SHORTER side, so it looks equally inset on square, portrait, and landscape posts. */
+export const LOGO_EDGE_MARGIN = 0.045;
+/** Logo width bounds, as a fraction of canvas width. */
+export const LOGO_SCALE_MIN = 0.08;
+export const LOGO_SCALE_MAX = 0.6;
+export const LOGO_OPACITY_MIN = 0.1;
+/** localStorage key for the whole LogoWatermark object: a logo is a fixed personal identity (like the branding text), so it stays on, in the same spot, across sessions. */
+export const LOGO_STORAGE_KEY = "textDebossStudio.logoWatermark";
+
 export const DEFAULT_TEXT = "یہاں لکھیں";
 
 /**
@@ -95,6 +111,19 @@ export const DEFAULT_STATE: DebossState = {
   brandingY: 0.9,
   brandingFont: null,
   brandingFontSize: null,
+  // Off by default so GALLERY_EXAMPLES/presets (which spread DEFAULT_STATE)
+  // never carry it; the studio restores the user's own saved logo settings
+  // from LOGO_STORAGE_KEY on load.
+  logo: {
+    enabled: false,
+    anchor: "br",
+    x: 0.8,
+    y: 0.92,
+    scale: 0.2,
+    opacity: 0.9,
+    tone: "auto",
+    style: "ink",
+  },
 };
 
 export const FONT_OPTIONS: { value: FontFamily; label: string }[] = [
@@ -462,7 +491,7 @@ export function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): stri
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-/** Strip `textBlocks` and the branding fields from a DebossState to build a CustomSet snapshot (a Set is a reusable look, not pinned content, styling, position, or personal branding metadata). */
+/** Strip `textBlocks`, the branding fields, and the logo watermark from a DebossState to build a CustomSet snapshot (a Set is a reusable look, not pinned content, styling, position, or personal branding metadata). */
 export function toSetSnapshot(s: DebossState): CustomSet["state"] {
   const {
     transparent, paper, depth, shadow, highlight, blur,

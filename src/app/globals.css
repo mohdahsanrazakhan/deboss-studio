@@ -878,6 +878,46 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
 }
 .seg-btn:disabled { opacity: .45; cursor: not-allowed; }
 
+/* Logo watermark controls (ControlPanel.tsx) */
+.logo-wm {
+  margin: 4px 0 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfaf6;
+}
+.logo-wm .field-row:last-child,
+.logo-wm .field-hint:last-child { margin-bottom: 0; }
+.logo-wm .field-hint { margin-top: 4px; }
+.logo-wm .field-row > span { font-size: .86rem; color: var(--ink); }
+/* The light tone is near-white, so its thumbnail sits on a dark chip to stay visible on the panel. */
+.logo-wm-thumb {
+  display: block; width: 96px; height: auto;
+  padding: 4px 6px; border-radius: 6px;
+}
+.logo-wm-thumb.is-light { background: #2b2823; }
+/* 3x3 position picker: each cell is a small square whose dot sits in the
+   same spot the logo will, so the grid reads like a tiny canvas. */
+.logo-pos-grid {
+  display: grid; grid-template-columns: repeat(3, 26px); gap: 4px;
+  padding: 4px; background: #f0ece2; border-radius: 9px;
+}
+.logo-pos-btn {
+  width: 26px; height: 26px; padding: 0;
+  border: 0; border-radius: 6px; background: transparent;
+  cursor: pointer; position: relative;
+}
+.logo-pos-btn::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  border-radius: 50%; background: #cabfa6;
+  transition: transform .1s, background .1s;
+}
+.logo-pos-btn:hover::after { background: var(--ink-soft); }
+.logo-pos-btn.is-active { background: #fff; box-shadow: var(--shadow-sm); }
+.logo-pos-btn.is-active::after { background: var(--accent); transform: scale(1.35); }
+.logo-pos-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 /* Paper swatches */
 .swatches { display: inline-flex; gap: 8px; }
 .swatch {

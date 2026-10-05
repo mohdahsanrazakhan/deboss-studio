@@ -30,6 +30,7 @@ import type {
   CustomSet,
   DebossState,
   FontFamily,
+  LogoWatermark,
   PresetId,
   SliderId,
   TextBlock,
@@ -38,6 +39,10 @@ import {
   BRANDING_FONT_SIZE_MAX,
   BRANDING_FONT_SIZE_MIN,
   BRANDING_TEXT_STORAGE_KEY,
+  LOGO_OPACITY_MIN,
+  LOGO_SCALE_MAX,
+  LOGO_SCALE_MIN,
+  LOGO_STORAGE_KEY,
   CUSTOM_SETS_STORAGE_KEY,
   DEFAULT_HINT,
   DEFAULT_SET_STORAGE_KEY,
@@ -64,8 +69,36 @@ import {
   computeLayout,
   drawScene,
   ensureFont,
+  ensureLogoImages,
   resolveBrandingFontSize,
 } from "@/lib/deboss/engine";
+
+const LOGO_ANCHORS: readonly LogoWatermark["anchor"][] = ["tl", "tc", "tr", "ml", "c", "mr", "bl", "bc", "br", "custom"];
+
+/**
+ * Clamps every field of a (possibly stale or hand-edited) stored logo
+ * object back into range, falling back to the default per field, so a
+ * corrupt localStorage value can never put the renderer in a bad state.
+ */
+function sanitizeLogo(raw: unknown): LogoWatermark {
+  const d = DEFAULT_STATE.logo;
+  if (!raw || typeof raw !== "object") return d;
+  const r = raw as Partial<Record<keyof LogoWatermark, unknown>>;
+  const num = (v: unknown, fallback: number, min: number, max: number) =>
+    typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback;
+  return {
+    enabled: typeof r.enabled === "boolean" ? r.enabled : d.enabled,
+    anchor: LOGO_ANCHORS.includes(r.anchor as LogoWatermark["anchor"])
+      ? (r.anchor as LogoWatermark["anchor"])
+      : d.anchor,
+    x: num(r.x, d.x, 0, 1),
+    y: num(r.y, d.y, 0, 1),
+    scale: num(r.scale, d.scale, LOGO_SCALE_MIN, LOGO_SCALE_MAX),
+    opacity: num(r.opacity, d.opacity, LOGO_OPACITY_MIN, 1),
+    tone: r.tone === "dark" || r.tone === "light" || r.tone === "auto" ? r.tone : d.tone,
+    style: r.style === "ink" || r.style === "debossed" ? r.style : d.style,
+  };
+}
 
 export function useDebossStudio(
   initialPresetId: PresetId | null = null,
@@ -122,6 +155,7 @@ export function useDebossStudio(
   customSetsRef.current = customSets;
   const customSetsLoadedRef = useRef(false);
   const brandingLoadedRef = useRef(false);
+  const logoLoadedRef = useRef(false);
 
   // Latest active-example id, read by updateTextBlock without adding it as a dependency.
   const activeExampleRef = useRef(activeExample);
@@ -300,6 +334,40 @@ export function useDebossStudio(
   }, []);
 
   /* ------------------------------------------------------------------
+     Logo watermark: settings (on/off, spot, size, opacity, tone, style)
+     restored from storage like the branding text, since the logo is a
+     fixed identity meant to sit on every post. The image files are only
+     fetched once the logo is switched on, and decode independently of
+     fonts, so this repaints once they're ready instead of delaying the
+     first paint for them.
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(LOGO_STORAGE_KEY);
+      if (stored) {
+        const logo = sanitizeLogo(JSON.parse(stored));
+        setState((s) => ({ ...s, logo }));
+      }
+    } catch {
+      /* storage unavailable or corrupt: keep the default (off) logo */
+    } finally {
+      logoLoadedRef.current = true;
+    }
+  }, []);
+
+  const logoEnabled = state.logo.enabled;
+  useEffect(() => {
+    if (!logoEnabled) return;
+    let cancelled = false;
+    void ensureLogoImages().then(() => {
+      if (!cancelled) scheduleRender();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [logoEnabled, scheduleRender]);
+
+  /* ------------------------------------------------------------------
      Preset deep link: a validated `?preset=` query value resolved
      server-side (app/page.tsx) applies on first paint. Declared AFTER
      the custom-sets/default-set load effect above so its state update
@@ -348,7 +416,11 @@ export function useDebossStudio(
     setActiveExample(example.slug);
     setActivePreset(null);
     setActiveCustomSet(null);
-    setState(example.state);
+    // Full replace, EXCEPT the personal identity fields (branding text and
+    // logo) restored from storage by the effects above: an example is
+    // someone else's look, not a reason to strip the user's own signature
+    // (and the persist effects would otherwise save the wiped values).
+    setState((s) => ({ ...example.state, brandingText: s.brandingText, logo: s.logo }));
     setTextRevision((r) => r + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -390,6 +462,15 @@ export function useDebossStudio(
       /* storage full/unavailable: branding text stays in memory for this session */
     }
   }, [state.brandingText]);
+
+  useEffect(() => {
+    if (!logoLoadedRef.current) return;
+    try {
+      window.localStorage.setItem(LOGO_STORAGE_KEY, JSON.stringify(state.logo));
+    } catch {
+      /* storage full/unavailable: logo settings stay in memory for this session */
+    }
+  }, [state.logo]);
 
   /* ------------------------------------------------------------------
      State mutators
@@ -502,6 +583,16 @@ export function useDebossStudio(
   const setBrandingFontSize = useCallback((size: number) => {
     const clamped = Math.min(BRANDING_FONT_SIZE_MAX, Math.max(BRANDING_FONT_SIZE_MIN, size));
     setState((s) => ({ ...s, brandingFontSize: clamped }));
+  }, []);
+
+  /** Patches the logo watermark (enable, snap anchor, size, opacity, tone, style). Same "orthogonal to the look" exception as branding: no preset/set/example invalidation. */
+  const updateLogo = useCallback((patch: Partial<LogoWatermark>) => {
+    setState((s) => ({ ...s, logo: sanitizeLogo({ ...s.logo, ...patch }) }));
+  }, []);
+
+  /** Dragging the logo switches it to a free "custom" spot. */
+  const setLogoPosition = useCallback((x: number, y: number) => {
+    setState((s) => ({ ...s, logo: sanitizeLogo({ ...s.logo, anchor: "custom", x, y }) }));
   }, []);
 
   const setSlider = useCallback((id: SliderId, value: number) => {
@@ -679,13 +770,15 @@ export function useDebossStudio(
   /* ------------------------------------------------------------------
      Export actions: same render path as the preview, at 3× resolution
      ------------------------------------------------------------------ */
+  /** Builds the export canvas, first making sure the logo image (if on) has decoded, so an export can never silently miss it. */
+  const buildExport = useCallback(async () => {
+    if (stateRef.current.logo.enabled) await ensureLogoImages();
+    return buildExportCanvas(stateRef.current, measureLogicalWidth(), EXPORT_SCALE);
+  }, [measureLogicalWidth]);
+
   const downloadPng = useCallback(async () => {
     try {
-      const out = buildExportCanvas(
-        stateRef.current,
-        measureLogicalWidth(),
-        EXPORT_SCALE,
-      );
+      const out = await buildExport();
       const blob = await canvasToPngBlob(out);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -697,16 +790,12 @@ export function useDebossStudio(
     } catch {
       flashHint("Export failed, try again");
     }
-  }, [flashHint, measureLogicalWidth]);
+  }, [flashHint, buildExport]);
 
   const copyImage = useCallback(async () => {
     setIsCopying(true);
     try {
-      const out = buildExportCanvas(
-        stateRef.current,
-        measureLogicalWidth(),
-        EXPORT_SCALE,
-      );
+      const out = await buildExport();
       const blob = await canvasToPngBlob(out);
       await navigator.clipboard.write([
         new ClipboardItem({ "image/png": blob }),
@@ -717,7 +806,7 @@ export function useDebossStudio(
     } finally {
       setIsCopying(false);
     }
-  }, [flashHint, measureLogicalWidth]);
+  }, [flashHint, buildExport]);
 
   /**
    * Hands the exported PNG to the OS share sheet (Instagram, Messages,
@@ -729,11 +818,7 @@ export function useDebossStudio(
   const shareImage = useCallback(async () => {
     setIsSharing(true);
     try {
-      const out = buildExportCanvas(
-        stateRef.current,
-        measureLogicalWidth(),
-        EXPORT_SCALE,
-      );
+      const out = await buildExport();
       const blob = await canvasToPngBlob(out);
       const file = new File([blob], EXPORT_FILENAME, { type: "image/png" });
       if (!navigator.canShare?.({ files: [file] })) {
@@ -749,7 +834,7 @@ export function useDebossStudio(
     } finally {
       setIsSharing(false);
     }
-  }, [flashHint, measureLogicalWidth]);
+  }, [flashHint, buildExport]);
 
   return {
     state,
@@ -782,6 +867,8 @@ export function useDebossStudio(
     setBrandingPosition,
     setBrandingFont,
     setBrandingFontSize,
+    updateLogo,
+    setLogoPosition,
     setSlider,
     setPaper,
     setTransparent,

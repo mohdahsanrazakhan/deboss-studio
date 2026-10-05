@@ -29,6 +29,9 @@ import {
   BRANDING_FONT_SIZE_MIN,
   BRANDING_PAPER_LUMINANCE_THRESHOLD,
   DEFAULT_TEXT_BLOCK,
+  LOGO_ASPECT,
+  LOGO_EDGE_MARGIN,
+  LOGO_SRC,
   MAX_LOGICAL_H,
   MIN_LOGICAL_H,
   PAD_X,
@@ -622,6 +625,186 @@ function drawBranding(
 }
 
 /* -------------------------------------------------------------------
+   Logo watermark: an image (public/watermark/, see LOGO_SRC), drawn
+   last inside drawScene so preview and export stay pixel-identical.
+   Images load lazily (module import stays SSR-safe) and drawLogo is a
+   silent no-op until the file has decoded; callers that need it
+   guaranteed (the export actions) await ensureLogoImages() first.
+   `resolveLogoBox` is the ONE placement formula shared by drawing and by
+   LogoHandle.tsx's drag hit-box, same measure-vs-draw rule as branding.
+   ------------------------------------------------------------------- */
+type LogoToneFile = keyof typeof LOGO_SRC;
+
+const _logoImages: Partial<Record<LogoToneFile, HTMLImageElement>> = {};
+
+function getLogoImage(tone: LogoToneFile): HTMLImageElement {
+  let img = _logoImages[tone];
+  if (!img) {
+    img = new Image();
+    img.decoding = "async";
+    img.src = LOGO_SRC[tone];
+    _logoImages[tone] = img;
+  }
+  return img;
+}
+
+function isImageReady(img: HTMLImageElement): boolean {
+  return img.complete && img.naturalWidth > 0;
+}
+
+/** Resolves once both logo tones are decoded (or failed: a missing file just means no logo, never a thrown export). */
+export async function ensureLogoImages(): Promise<void> {
+  await Promise.all(
+    (Object.keys(LOGO_SRC) as LogoToneFile[]).map(async (tone) => {
+      const img = getLogoImage(tone);
+      if (isImageReady(img)) return;
+      try {
+        await img.decode();
+      } catch {
+        /* failed to load: drawLogo skips it */
+      }
+    }),
+  );
+}
+
+/** "auto" follows the paper, so the mark stays legible on the "Black" tone without the user touching anything. */
+export function resolveLogoTone(state: DebossState): LogoToneFile {
+  const { tone } = state.logo;
+  if (tone !== "auto") return tone;
+  return isPaperDark(state.paper) ? "light" : "dark";
+}
+
+/**
+ * Logical-px center and size of the logo. Snapped anchors are resolved
+ * from the logo's CURRENT size every time (not stored as x/y), so a
+ * corner-placed logo stays exactly LOGO_EDGE_MARGIN from both edges when
+ * its size or the canvas shape changes. The margin is a fraction of the
+ * canvas's shorter side so the inset looks equal on both axes.
+ */
+export function resolveLogoBox(
+  state: DebossState,
+  logicalW: number,
+  logicalH: number,
+): { cx: number; cy: number; width: number; height: number } {
+  const { anchor, scale, x, y } = state.logo;
+  const width = scale * logicalW;
+  const height = width / LOGO_ASPECT;
+
+  if (anchor === "custom") {
+    // Keep the whole mark on the canvas; center it if it's bigger than the canvas.
+    const clampAxis = (v: number, half: number, total: number) =>
+      half * 2 >= total ? total / 2 : Math.min(total - half, Math.max(half, v));
+    return {
+      cx: clampAxis(x * logicalW, width / 2, logicalW),
+      cy: clampAxis(y * logicalH, height / 2, logicalH),
+      width,
+      height,
+    };
+  }
+
+  const m = LOGO_EDGE_MARGIN * Math.min(logicalW, logicalH);
+  const row = anchor === "c" ? "m" : anchor[0];
+  const col = anchor === "c" ? "c" : anchor[1];
+  const cx = col === "l" ? m + width / 2 : col === "r" ? logicalW - m - width / 2 : logicalW / 2;
+  const cy = row === "t" ? m + height / 2 : row === "b" ? logicalH - m - height / 2 : logicalH / 2;
+  return { cx, cy, width, height };
+}
+
+/*
+ * One-step downscaling of a 2000px-wide source to a ~150-400px mark
+ * aliases in some browsers even with imageSmoothingQuality "high". Halve
+ * it in steps on offscreen canvases until within 2x of the target, then
+ * let the final drawImage do the rest. Cached per tone + target width so
+ * the render loop doesn't redo it every frame; the cache stays tiny.
+ */
+const _scaledLogoCache = new Map<string, CanvasImageSource>();
+
+function getScaledLogo(img: HTMLImageElement, tone: LogoToneFile, targetW: number): CanvasImageSource {
+  const key = `${tone}:${Math.round(targetW)}`;
+  const cached = _scaledLogoCache.get(key);
+  if (cached) return cached;
+
+  let src: CanvasImageSource = img;
+  let w = img.naturalWidth;
+  let h = img.naturalHeight;
+  while (w / 2 >= targetW) {
+    const nw = Math.max(1, Math.round(w / 2));
+    const nh = Math.max(1, Math.round(h / 2));
+    const c = document.createElement("canvas");
+    c.width = nw;
+    c.height = nh;
+    const cctx = c.getContext("2d");
+    if (!cctx) break;
+    cctx.imageSmoothingEnabled = true;
+    cctx.imageSmoothingQuality = "high";
+    cctx.drawImage(src, 0, 0, nw, nh);
+    src = c;
+    w = nw;
+    h = nh;
+  }
+
+  if (_scaledLogoCache.size > 12) _scaledLogoCache.clear();
+  _scaledLogoCache.set(key, src);
+  return src;
+}
+
+function drawLogo(
+  ctx: CanvasRenderingContext2D,
+  state: DebossState,
+  layout: SceneLayout,
+  pxW: number,
+  pxH: number,
+  s: number,
+): void {
+  const logo = state.logo;
+  if (!logo.enabled) return;
+  const tone = resolveLogoTone(state);
+  const img = getLogoImage(tone);
+  if (!isImageReady(img)) return;
+
+  const { cx, cy, width, height } = resolveLogoBox(state, layout.logicalW, layout.logicalH);
+  const dw = width * s;
+  const dh = height * s;
+  const dx = (cx - width / 2) * s;
+  const dy = (cy - height / 2) * s;
+  const source = getScaledLogo(img, tone, dw);
+
+  if (logo.style === "debossed") {
+    // The logo's alpha becomes a glyph mask, then goes through the exact
+    // same recess/tint/shadow/highlight compositing as text, so it reads
+    // as pressed into the same sheet. Composited on its own layer first so
+    // opacity applies to the finished engraving as a whole.
+    const mask = document.createElement("canvas");
+    mask.width = pxW;
+    mask.height = pxH;
+    const mctx = mask.getContext("2d");
+    const layer = document.createElement("canvas");
+    layer.width = pxW;
+    layer.height = pxH;
+    const lctx = layer.getContext("2d");
+    if (!mctx || !lctx) return;
+    mctx.imageSmoothingQuality = "high";
+    mctx.drawImage(source, dx, dy, dw, dh);
+    mctx.globalCompositeOperation = "source-in";
+    mctx.fillStyle = "#000";
+    mctx.fillRect(0, 0, pxW, pxH);
+    compositeEngravedGlyph(lctx, mask, state, pxW, pxH, s);
+    ctx.save();
+    ctx.globalAlpha = logo.opacity;
+    ctx.drawImage(layer, 0, 0);
+    ctx.restore();
+    return;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = logo.opacity;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(source, dx, dy, dw, dh);
+  ctx.restore();
+}
+
+/* -------------------------------------------------------------------
    Glyph mask: one block's text drawn solid on a transparent canvas
    ------------------------------------------------------------------- */
 function buildBlockMask(
@@ -908,6 +1091,9 @@ export function drawScene(
   // (f) Branding watermark: always last, on top, regardless of whether
   // there are any text blocks (see drawBranding's own comment).
   drawBranding(ctx, state, layout, pxW, pxH, s);
+
+  // (g) Logo watermark: topmost layer (see drawLogo's own comment).
+  drawLogo(ctx, state, layout, pxW, pxH, s);
 }
 
 /* -------------------------------------------------------------------
